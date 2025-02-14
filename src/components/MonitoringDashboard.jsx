@@ -107,44 +107,6 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
       </div>
 
       <div className="space-y-6">
-        {/* Alert Configuration */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-200">Alert Configuration</h4>
-          
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="include-stopped"
-                checked={alertConfig.includeStoppedContainers}
-                onChange={(e) => setAlertConfig(prev => ({ ...prev, includeStoppedContainers: e.target.checked }))}
-                className="rounded bg-gray-700 border-gray-600"
-              />
-              <label htmlFor="include-stopped" className="text-gray-300 text-sm">
-                Alert on Stopped Containers
-                <div className="text-gray-500 text-xs">
-                  When enabled, stopped containers can trigger alerts if their last known metrics exceeded thresholds.
-                  Useful for detecting containers that crashed or stopped due to resource exhaustion (e.g., a container
-                  that stopped because it ran out of memory).
-                </div>
-              </label>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="enable-pulse"
-                checked={alertConfig.enablePulsingAnimation}
-                onChange={(e) => setAlertConfig(prev => ({ ...prev, enablePulsingAnimation: e.target.checked }))}
-                className="rounded bg-gray-700 border-gray-600"
-              />
-              <label htmlFor="enable-pulse" className="text-gray-300 text-sm">
-                Enable Pulsing Animation
-              </label>
-            </div>
-          </div>
-        </div>
-
         {/* Thresholds */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-gray-200">Alert Thresholds</h4>
