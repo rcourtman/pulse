@@ -91,14 +91,14 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
 });
 
 // Settings Panel Component
-const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig, onClose }) => {
+const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig, onClose, onReset }) => {
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-gray-800 p-6 shadow-lg border-l border-gray-700 overflow-y-auto z-50">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-medium text-white">Settings</h3>
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onClose}
           className="text-white hover:bg-gray-700"
         >
@@ -240,8 +240,34 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
           </div>
         </div>
       </div>
+
+      {/* Reset Button */}
+      <div className="pt-4 mt-6 border-t border-gray-700">
+        <Button
+          variant="ghost"
+          onClick={onReset}
+          className="w-full text-white hover:bg-gray-700"
+        >
+          Reset to Defaults
+        </Button>
+      </div>
     </div>
   );
+};
+
+// Default settings values
+const DEFAULT_THRESHOLDS = {
+  cpu: 5,
+  memory: 80,
+  disk: 80,
+  network: 1024
+};
+
+const DEFAULT_ALERT_CONFIG = {
+  mode: 'any',
+  minThresholds: 2,
+  includeStoppedContainers: false,
+  enablePulsingAnimation: true
 };
 
 const MonitoringDashboard = () => {
@@ -261,18 +287,13 @@ const MonitoringDashboard = () => {
       return newPinned;
     });
   }, []);
-  const [thresholds, setThresholds] = useState({
-    cpu: 5,
-    memory: 80,
-    disk: 80,
-    network: 1024
-  });
-  const [alertConfig, setAlertConfig] = useState({
-    mode: 'any',
-    minThresholds: 2,
-    includeStoppedContainers: false,
-    enablePulsingAnimation: true
-  });
+  const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS);
+  const [alertConfig, setAlertConfig] = useState(DEFAULT_ALERT_CONFIG);
+
+  const handleReset = useCallback(() => {
+    setThresholds(DEFAULT_THRESHOLDS);
+    setAlertConfig(DEFAULT_ALERT_CONFIG);
+  }, []);
 
   const getAlertScore = useCallback((container) => {
     if (!alertConfig.includeStoppedContainers && container.status !== 'running') {
@@ -364,6 +385,7 @@ const MonitoringDashboard = () => {
             alertConfig={alertConfig}
             setAlertConfig={setAlertConfig}
             onClose={() => setShowSettings(false)}
+            onReset={handleReset}
           />
         </>
       )}
