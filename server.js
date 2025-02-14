@@ -57,8 +57,6 @@ app.use((req, res, next) => {
 // Handle the API proxy route
 app.get('/api/nodes/minipc/lxc', async (req, res) => {
   try {
-    console.log('Fetching from Proxmox...');
-    
     const response = await fetch(`${PROXMOX_URL}/api2/json/nodes/minipc/lxc`, {
       headers: {
         'Authorization': AUTH_HEADER
@@ -71,11 +69,9 @@ app.get('/api/nodes/minipc/lxc', async (req, res) => {
     }
     
     const data = await response.json();
-    console.log('Proxmox response:', JSON.stringify(data).substring(0, 200));
-    
     res.json(data);
   } catch (error) {
-    console.error('Error proxying request:', error);
+    console.error(`[${new Date().toISOString()}] Error proxying request:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -90,6 +86,6 @@ app.get('*', (req, res) => {
 
 const serverIP = getLocalIP();
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://${serverIP}:${PORT}`);
-  console.log('Ready to proxy requests to:', PROXMOX_URL);
+  console.log(`[${new Date().toISOString()}] Server running on http://${serverIP}:${PORT}`);
+  console.log(`[${new Date().toISOString()}] Ready to proxy requests to:`, PROXMOX_URL);
 });
