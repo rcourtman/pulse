@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Settings2, SortAsc, AlertTriangle, Pin } from "lucide-react";
+import { Settings2, Pin, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { Button } from "./ui/button";
 import useContainerData from './useContainerData';
 
@@ -38,21 +38,11 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
       {isAlerted && enablePulsingAnimation && (
         <div className="absolute inset-0 bg-blue-500 animate-pulse-bg rounded pointer-events-none" />
       )}
-      <div className="flex items-center gap-2 justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
-          <span title={container.ip ? `IP: ${container.ip}` : ''} className={nameColor}>
-            {container.name}
-          </span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onTogglePin(container.id)}
-          className={`h-6 w-6 ${pinColor} hover:text-blue-400`}
-        >
-          <Pin className="h-4 w-4" />
-        </Button>
+      <div className="flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
+        <span title={container.ip ? `IP: ${container.ip}` : ''} className={nameColor}>
+          {container.name}
+        </span>
       </div>
       <div className="flex items-center gap-2">
         <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
@@ -81,10 +71,20 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
           />
         </div>
       </div>
-      <div className="text-gray-200 flex gap-2 justify-end">
-        <span className={netInColor}>↑ {formatNetworkRate(container.networkIn)}</span>
-        <span className="mx-1 text-gray-500">|</span>
-        <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
+      <div className="text-gray-200 flex gap-2 justify-end items-center">
+        <div className="flex gap-2">
+          <span className={netInColor}>↑ {formatNetworkRate(container.networkIn)}</span>
+          <span className="mx-1 text-gray-500">|</span>
+          <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onTogglePin(container.id)}
+          className={`h-6 w-6 ml-2 ${pinColor} hover:text-blue-400`}
+        >
+          <Pin className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
@@ -111,35 +111,6 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-gray-200">Alert Configuration</h4>
           
-          <div>
-            <label className="text-gray-300 text-sm mb-1 block">Alert Mode</label>
-            <select
-              value={alertConfig.mode}
-              onChange={(e) => setAlertConfig(prev => ({ ...prev, mode: e.target.value }))}
-              className="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white text-sm"
-            >
-              <option value="any">Any Threshold Exceeded</option>
-              <option value="all">All Thresholds Exceeded</option>
-              <option value="custom">Custom Threshold Count</option>
-            </select>
-          </div>
-
-          {alertConfig.mode === 'custom' && (
-            <div className="space-y-2">
-              <label className="text-gray-300 text-sm block">
-                Minimum Thresholds: {alertConfig.minThresholds}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                value={alertConfig.minThresholds}
-                onChange={(e) => setAlertConfig(prev => ({ ...prev, minThresholds: Number(e.target.value) }))}
-                className="w-full"
-              />
-            </div>
-          )}
-
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <input
@@ -264,17 +235,49 @@ const DEFAULT_THRESHOLDS = {
 };
 
 const DEFAULT_ALERT_CONFIG = {
-  mode: 'any',
-  minThresholds: 2,
   includeStoppedContainers: false,
   enablePulsingAnimation: true
+};
+
+const SortableHeader = ({ field, currentField, direction, onSort, children, className = "" }) => {
+  const isActive = currentField === field;
+
+  return (
+    <button
+      onClick={() => onSort(field)}
+      className={`flex items-center gap-2 hover:text-white transition-colors ${isActive ? 'text-white' : ''} ${className}`}
+    >
+      {children}
+      {isActive && field !== 'alert' && (
+        <span className="text-blue-400">
+          {direction === 'desc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+        </span>
+      )}
+    </button>
+  );
 };
 
 const MonitoringDashboard = () => {
   const { data: containers, loading, error } = useContainerData();
   const [showSettings, setShowSettings] = useState(false);
-  const [sortMode, setSortMode] = useState('alert');
+  const [sortField, setSortField] = useState('alert');
+  const [sortDirection, setSortDirection] = useState('desc');
   const [pinnedServices, setPinnedServices] = useState(new Set());
+
+  const handleSort = useCallback((field) => {
+    if (field === 'alert') return; // Prevent direct clicking of alert sort
+    
+    setSortField(prev => {
+      if (prev === field) {
+        // If clicking the same field again, return to alert sorting
+        setSortDirection('desc');
+        return 'alert';
+      }
+      // Switch to new field
+      setSortDirection('desc');
+      return field;
+    });
+  }, []);
 
   const handleTogglePin = useCallback((containerId) => {
     setPinnedServices(prev => {
@@ -307,40 +310,50 @@ const MonitoringDashboard = () => {
     if (container.networkIn >= thresholds.network) exceededThresholds++;
     if (container.networkOut >= thresholds.network) exceededThresholds++;
 
-    switch (alertConfig.mode) {
-      case 'any':
-        return exceededThresholds > 0 ? 1 : 0;
-      case 'all':
-        return exceededThresholds === 5 ? 1 : 0;
-      case 'custom':
-        return exceededThresholds >= alertConfig.minThresholds ? 1 : 0;
-      default:
-        return 0;
-    }
+    return exceededThresholds > 0 ? 1 : 0;
   }, [thresholds, alertConfig]);
 
   const sortedContainers = useMemo(() => {
     if (!containers) return [];
     return [...containers].sort((a, b) => {
-      // First prioritize pinned status
       const aPinned = pinnedServices.has(a.id);
       const bPinned = pinnedServices.has(b.id);
-      if (aPinned !== bPinned) {
-        return aPinned ? -1 : 1;
+
+      // If any items are pinned, prioritize pins and disable alert sorting
+      if (pinnedServices.size > 0) {
+        if (aPinned !== bPinned) {
+          return aPinned ? -1 : 1;
+        }
+        // For items of same pin status, use name as default sort
+        return a.name.localeCompare(b.name);
       }
       
-      // Then apply the selected sort mode
-      if (sortMode === 'alert') {
-        const aScore = getAlertScore(a);
-        const bScore = getAlertScore(b);
-        if (aScore === bScore) {
-          return a.name.localeCompare(b.name);
+      // If manual sort is active, use that
+      if (sortField !== 'alert') {
+        const direction = sortDirection === 'asc' ? 1 : -1;
+        switch (sortField) {
+          case 'cpu':
+            return (a.cpu - b.cpu) * direction;
+          case 'memory':
+            return (a.memory - b.memory) * direction;
+          case 'disk':
+            return (a.disk - b.disk) * direction;
+          case 'network':
+            const aNet = Math.max(a.networkIn, a.networkOut);
+            const bNet = Math.max(b.networkIn, b.networkOut);
+            return (aNet - bNet) * direction;
         }
-        return bScore - aScore;
       }
-      return a.name.localeCompare(b.name);
+
+      // Default alert sorting
+      const aScore = getAlertScore(a);
+      const bScore = getAlertScore(b);
+      if (aScore === bScore) {
+        return a.name.localeCompare(b.name);
+      }
+      return bScore - aScore; // Always descending for alerts (higher score at top)
     });
-  }, [containers, sortMode, getAlertScore, pinnedServices]);
+  }, [containers, sortField, sortDirection, getAlertScore, pinnedServices]);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -359,17 +372,6 @@ const MonitoringDashboard = () => {
             <Settings2 className="h-4 w-4" />
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={() => setSortMode((prev) => (prev === 'alert' ? 'name' : 'alert'))}
-            className="bg-gray-800 hover:bg-gray-700 text-white"
-          >
-            {sortMode === 'alert' ? 
-              <AlertTriangle className="h-4 w-4 mr-2" /> : 
-              <SortAsc className="h-4 w-4 mr-2" />
-            }
-            {sortMode === 'alert' ? 'Sort by Alerts' : 'Sort by Name'}
-          </Button>
         </div>
       </div>
 
@@ -405,11 +407,48 @@ const MonitoringDashboard = () => {
 
       <div className="space-y-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
         <div className="grid grid-cols-5 gap-4 px-4 py-2 text-sm font-medium text-gray-400">
-          <div>Name</div>
-          <div>CPU</div>
-          <div>Memory</div>
-          <div>Disk</div>
-          <div className="text-right">Network</div>
+          <span className="text-gray-400">Name</span>
+          <div>
+            <SortableHeader
+              field="cpu"
+              currentField={sortField}
+              direction={sortDirection}
+              onSort={handleSort}
+            >
+              CPU
+            </SortableHeader>
+          </div>
+          <div>
+            <SortableHeader
+              field="memory"
+              currentField={sortField}
+              direction={sortDirection}
+              onSort={handleSort}
+            >
+              Memory
+            </SortableHeader>
+          </div>
+          <div>
+            <SortableHeader
+              field="disk"
+              currentField={sortField}
+              direction={sortDirection}
+              onSort={handleSort}
+            >
+              Disk
+            </SortableHeader>
+          </div>
+          <div className="text-right">
+            <SortableHeader
+              field="network"
+              currentField={sortField}
+              direction={sortDirection}
+              onSort={handleSort}
+              className="justify-end ml-auto"
+            >
+              Network
+            </SortableHeader>
+          </div>
         </div>
         
         {sortedContainers.map((container) => (
@@ -421,7 +460,7 @@ const MonitoringDashboard = () => {
             isPinned={pinnedServices.has(container.id)}
             onTogglePin={handleTogglePin}
             getAlertScore={getAlertScore}
-            enablePulsingAnimation={alertConfig.enablePulsingAnimation}
+            enablePulsingAnimation={alertConfig.enablePulsingAnimation && sortField === 'alert' && pinnedServices.size === 0}
           />
         ))}
 
