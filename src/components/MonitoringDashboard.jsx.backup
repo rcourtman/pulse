@@ -1,0 +1,189 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+const MonitoringDashboard = () => {
+  const [containers, setContainers] = useState([]);
+  const [error, setError] = useState(null);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); // Track sorting state
+  const previousStats = useRef({});
+  const lastFetchTime = useRef(Date.now());
+
+  // Helper function to format network rate
+  const formatNetworkRate = (rateInKB) => {
+    if (rateInKB >= 1024 * 1024) {
+      return `${(rateInKB / (1024 * 1024)).toFixed(2)} GB/s`;
+    } else if (rateInKB >= 1024) {
+      return `${(rateInKB / 1024).toFixed(2)} MB/s`;
+    } else {
+      return `${rateInKB.toFixed(2)} KB/s`;
+    }
+  };
+
+  // Sorting function
+  const sortContainers = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+
+    const sortedContainers = [...containers].sort((a, b) => {
+      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    setContainers(sortedContainers);
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/nodes/minipc/lxc');
+        const currentTime = Date.now();
+        const timeDiff = (currentTime - lastFetchTime.current) / 1000; // Convert to seconds
+        lastFetchTime.current = currentTime;
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data?.data) {
+          const containerData = data.data.map(container => {
+            const prev = previousStats.current[container.vmid] || { netin: 0, netout: 0 };
+
+            // Calculate network rates in bytes per second
+            const netInRate = container.netin - prev.netin;
+            const netOutRate = container.netout - prev.netout;
+            const totalRate = (netInRate + netOutRate) / timeDiff;
+
+            // Convert bytes/s to KB/s and ensure non-negative
+            const networkRate = Math.max(0, totalRate) / 1024;
+
+            return {
+              name: container.name || 'Unknown',
+              id: container.vmid,
+              status: container.status || 'unknown',
+              cpu: Math.round((container.cpu || 0) * 1000) / 10,
+              memory: container.mem && container.maxmem ? 
+                Math.round((container.mem / container.maxmem) * 1000) / 10 : 0,
+              disk: container.disk && container.maxdisk ? 
+                Math.round((container.disk / container.maxdisk) * 1000) / 10 : 0,
+              network: networkRate
+            };
+          });
+
+          // Apply sorting if a sort key is set
+          if (sortConfig.key) {
+            containerData.sort((a, b) => {
+              if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+              if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+              return 0;
+            });
+          }
+
+          // Update previous stats ref
+          const newStats = {};
+          data.data.forEach(container => {
+            newStats[container.vmid] = {
+              netin: container.netin,
+              netout: container.netout
+            };
+          });
+          previousStats.current = newStats;
+
+          setContainers(containerData);
+        }
+      } catch (error) {
+        console.error('Fetch error:', error);
+        setError(error.message);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 2000);
+    return () => clearInterval(interval);
+  }, [sortConfig]); // Re-fetch and re-sort when sortConfig changes
+
+  const getProgressBarColor = (value) => {
+    if (value > 80) return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-white">All Systems</h1>
+        <p className="text-gray-400">Updated in real time.</p>
+      </div>
+
+      <div className="space-y-1">
+        <div className="grid grid-cols-6 gap-4 px-4 py-2 text-gray-400 text-sm">
+          <div onClick={() => sortContainers('name')} className="cursor-pointer">
+            System {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+          <div onClick={() => sortContainers('cpu')} className="cursor-pointer">
+            CPU {sortConfig.key === 'cpu' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+          <div onClick={() => sortContainers('memory')} className="cursor-pointer">
+            Memory {sortConfig.key === 'memory' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+          <div onClick={() => sortContainers('disk')} className="cursor-pointer">
+            Disk {sortConfig.key === 'disk' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+          <div onClick={() => sortContainers('network')} className="cursor-pointer">
+            Net {sortConfig.key === 'network' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+          <div onClick={() => sortContainers('status')} className="cursor-pointer">
+            Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '▲' : '▼')}
+          </div>
+        </div>
+
+        {containers.map((container) => (
+          <div key={container.id} 
+               className="grid grid-cols-6 gap-4 px-4 py-2 rounded hover:bg-gray-800">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${container.status === 'running' ? 'bg-green-500' : 'bg-gray-500'}`} />
+              <span className="text-gray-200">{container.name}</span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-gray-200 w-12">{container.cpu}%</span>
+              <div className="flex-1 bg-gray-700 rounded-full h-2">
+                <div className={`${getProgressBarColor(container.cpu)} h-full rounded-full`}
+                     style={{ width: `${Math.min(container.cpu, 100)}%` }} />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-gray-200 w-12">{container.memory}%</span>
+              <div className="flex-1 bg-gray-700 rounded-full h-2">
+                <div className={`${getProgressBarColor(container.memory)} h-full rounded-full`}
+                     style={{ width: `${Math.min(container.memory, 100)}%` }} />
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-gray-200 w-12">{container.disk}%</span>
+              <div className="flex-1 bg-gray-700 rounded-full h-2">
+                <div className={`${getProgressBarColor(container.disk)} h-full rounded-full`}
+                     style={{ width: `${Math.min(container.disk, 100)}%` }} />
+              </div>
+            </div>
+            
+            <div className="text-gray-200">
+              {formatNetworkRate(container.network)}
+            </div>
+            
+            <div className="text-gray-200">
+              {container.status}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default MonitoringDashboard;
