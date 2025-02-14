@@ -30,6 +30,14 @@ Pulse is a monitoring dashboard application built with React, Vite, and Tailwind
 *   react-chartjs-2
 *   tailwind-merge
 
+## Architecture
+
+The application consists of two main components:
+- A React application served by Vite's development server on port 5173
+- An Express backend server running on port 3001 that proxies requests to your Proxmox server
+
+The React application communicates with the backend through a configured proxy, allowing seamless API interactions while avoiding CORS issues.
+
 ## Installation
 
 1.  Clone the repository:
@@ -47,14 +55,25 @@ Pulse is a monitoring dashboard application built with React, Vite, and Tailwind
     ```bash
     npm install
     ```
+4.  Create a .env file in the root directory with the following variables:
+
+    ```
+    PROXMOX_URL=https://your-proxmox-server:8006
+    PROXMOX_AUTH=PVEAPIToken=root@pam!monitoring=your-token-here
+    PORT=3001
+    ```
 
 ## Usage
 
-1.  Start the development server:
+1.  Start the development environment:
 
     ```bash
     npm run dev
     ```
+    This command will start:
+    - Vite's development server serving the React application at `http://localhost:5173`
+    - The Express backend server at `http://localhost:3001`
+
 2.  Open your browser and navigate to `http://localhost:5173`.
 
 ## Contributing

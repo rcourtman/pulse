@@ -40,7 +40,7 @@ if (missingEnvVars.length > 0) {
 
 const PROXMOX_URL = process.env.PROXMOX_URL;
 const AUTH_HEADER = process.env.PROXMOX_AUTH;
-const PORT = process.env.PORT || 5173;
+const PORT = process.env.PORT || 3001;
 
 // Create custom HTTPS agent that ignores self-signed certs
 const httpsAgent = new https.Agent({
