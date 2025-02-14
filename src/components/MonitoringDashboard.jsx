@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Settings2, SortAsc, AlertTriangle } from "lucide-react";
+import { Settings2, SortAsc, AlertTriangle, Pin } from "lucide-react";
 import { Button } from "./ui/button";
 import useContainerData from './useContainerData';
 
@@ -20,9 +20,10 @@ const getProgressBarColor = (value) => {
   return 'bg-green-500';
 };
 
-const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds }) => {
+const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin }) => {
   const isRunning = container.status === 'running';
   const nameColor = isRunning ? 'text-gray-200' : 'text-gray-500';
+  const pinColor = isPinned ? 'text-blue-400' : 'text-gray-500';
   const cpuColor = !isRunning || container.cpu < thresholds.cpu ? 'text-gray-500' : 'text-white';
   const memColor = !isRunning || container.memory < thresholds.memory ? 'text-gray-500' : 'text-white';
   const diskColor = !isRunning || container.disk < thresholds.disk ? 'text-gray-500' : 'text-white';
@@ -31,11 +32,21 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds })
 
   return (
     <div className="grid grid-cols-5 gap-4 px-4 py-2 rounded hover:bg-gray-800">
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
-        <span title={container.ip ? `IP: ${container.ip}` : ''} className={nameColor}>
-          {container.name}
-        </span>
+      <div className="flex items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
+          <span title={container.ip ? `IP: ${container.ip}` : ''} className={nameColor}>
+            {container.name}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onTogglePin(container.id)}
+          className={`h-6 w-6 ${pinColor} hover:text-blue-400`}
+        >
+          <Pin className="h-4 w-4" />
+        </Button>
       </div>
       <div className="flex items-center gap-2">
         <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
@@ -211,6 +222,19 @@ const MonitoringDashboard = () => {
   const { data: containers, loading, error } = useContainerData();
   const [showSettings, setShowSettings] = useState(false);
   const [sortMode, setSortMode] = useState('alert');
+  const [pinnedServices, setPinnedServices] = useState(new Set());
+
+  const handleTogglePin = useCallback((containerId) => {
+    setPinnedServices(prev => {
+      const newPinned = new Set(prev);
+      if (newPinned.has(containerId)) {
+        newPinned.delete(containerId);
+      } else {
+        newPinned.add(containerId);
+      }
+      return newPinned;
+    });
+  }, []);
   const [thresholds, setThresholds] = useState({
     cpu: 5,
     memory: 80,
@@ -250,6 +274,14 @@ const MonitoringDashboard = () => {
   const sortedContainers = useMemo(() => {
     if (!containers) return [];
     return [...containers].sort((a, b) => {
+      // First prioritize pinned status
+      const aPinned = pinnedServices.has(a.id);
+      const bPinned = pinnedServices.has(b.id);
+      if (aPinned !== bPinned) {
+        return bPinned ? 1 : -1;
+      }
+      
+      // Then apply the selected sort mode
       if (sortMode === 'alert') {
         const aScore = getAlertScore(a);
         const bScore = getAlertScore(b);
@@ -260,7 +292,7 @@ const MonitoringDashboard = () => {
       }
       return a.name.localeCompare(b.name);
     });
-  }, [containers, sortMode, getAlertScore]);
+  }, [containers, sortMode, getAlertScore, pinnedServices]);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -331,6 +363,8 @@ const MonitoringDashboard = () => {
             container={container}
             getProgressBarColor={getProgressBarColor}
             thresholds={thresholds}
+            isPinned={pinnedServices.has(container.id)}
+            onTogglePin={handleTogglePin}
           />
         ))}
 
