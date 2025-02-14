@@ -20,22 +20,33 @@ const getProgressBarColor = (value) => {
   return 'bg-green-500';
 };
 
-const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, enablePulsingAnimation }) => {
+const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers }) => {
   const isRunning = container.status === 'running';
-  const nameColor = isRunning ? 'text-gray-200' : 'text-gray-500';
-  const pinColor = isPinned ? 'text-blue-400' : 'text-gray-500';
-  const cpuColor = !isRunning || container.cpu < thresholds.cpu ? 'text-gray-500' : 'text-white';
-  const memColor = !isRunning || container.memory < thresholds.memory ? 'text-gray-500' : 'text-white';
-  const diskColor = !isRunning || container.disk < thresholds.disk ? 'text-gray-500' : 'text-white';
-  const netInColor = !isRunning || container.networkIn < thresholds.network ? 'text-gray-500' : 'text-white';
-  const netOutColor = !isRunning || container.networkOut < thresholds.network ? 'text-gray-500' : 'text-white';
-  
   const isAlerted = getAlertScore(container) > 0;
   const rowClassName = `relative grid grid-cols-5 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
 
+  // Colors based on whether we're in pinned mode or threshold mode
+  const nameColor = isPinned ? 'text-white' : (isRunning ? 'text-gray-200' : 'text-gray-500');
+  const pinColor = isPinned ? 'text-blue-400' : 'text-gray-500';
+
+  // In pinned mode, only pinned containers get white text, others are grey
+  // In unpinned mode, use threshold-based coloring
+  const getMetricColor = (value, threshold) => {
+    if (hasPinnedContainers) {
+      return isPinned ? 'text-white' : 'text-gray-500';
+    }
+    return !isRunning || value < threshold ? 'text-gray-500' : 'text-white';
+  };
+
+  const cpuColor = getMetricColor(container.cpu, thresholds.cpu);
+  const memColor = getMetricColor(container.memory, thresholds.memory);
+  const diskColor = getMetricColor(container.disk, thresholds.disk);
+  const netInColor = getMetricColor(container.networkIn, thresholds.network);
+  const netOutColor = getMetricColor(container.networkOut, thresholds.network);
+
   return (
     <div className={rowClassName}>
-      {isAlerted && enablePulsingAnimation && (
+      {(isPinned || (!hasPinnedContainers && isAlerted)) && (
         <div className="absolute inset-0 bg-blue-500 animate-pulse-bg rounded pointer-events-none" />
       )}
       <div className="flex items-center gap-2">
@@ -197,8 +208,7 @@ const DEFAULT_THRESHOLDS = {
 };
 
 const DEFAULT_ALERT_CONFIG = {
-  includeStoppedContainers: false,
-  enablePulsingAnimation: true
+  includeStoppedContainers: false
 };
 
 const SortableHeader = ({ field, currentField, direction, onSort, children, className = "" }) => {
@@ -420,7 +430,7 @@ const MonitoringDashboard = () => {
             isPinned={pinnedServices.has(container.id)}
             onTogglePin={handleTogglePin}
             getAlertScore={getAlertScore}
-            enablePulsingAnimation={alertConfig.enablePulsingAnimation && sortField === 'alert' && pinnedServices.size === 0}
+            hasPinnedContainers={pinnedServices.size > 0}
           />
         ))}
 
