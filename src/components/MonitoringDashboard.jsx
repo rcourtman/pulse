@@ -319,14 +319,12 @@ const MonitoringDashboard = () => {
       const aPinned = pinnedServices.has(a.id);
       const bPinned = pinnedServices.has(b.id);
 
-      // If any items are pinned, prioritize pins and disable alert sorting
-      if (pinnedServices.size > 0) {
-        if (aPinned !== bPinned) {
-          return aPinned ? -1 : 1;
-        }
-        // For items of same pin status, use name as default sort
-        return a.name.localeCompare(b.name);
+      // First sort by pin status
+      if (aPinned !== bPinned) {
+        return aPinned ? -1 : 1;
       }
+
+      // Then apply the selected sort within each group (pinned and unpinned)
       
       // If manual sort is active, use that
       if (sortField !== 'alert') {
