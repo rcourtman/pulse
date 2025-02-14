@@ -20,7 +20,7 @@ const getProgressBarColor = (value) => {
   return 'bg-green-500';
 };
 
-const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin }) => {
+const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, enablePulsingAnimation }) => {
   const isRunning = container.status === 'running';
   const nameColor = isRunning ? 'text-gray-200' : 'text-gray-500';
   const pinColor = isPinned ? 'text-blue-400' : 'text-gray-500';
@@ -29,9 +29,15 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
   const diskColor = !isRunning || container.disk < thresholds.disk ? 'text-gray-500' : 'text-white';
   const netInColor = !isRunning || container.networkIn < thresholds.network ? 'text-gray-500' : 'text-white';
   const netOutColor = !isRunning || container.networkOut < thresholds.network ? 'text-gray-500' : 'text-white';
+  
+  const isAlerted = getAlertScore(container) > 0;
+  const rowClassName = `relative grid grid-cols-5 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
 
   return (
-    <div className="grid grid-cols-5 gap-4 px-4 py-2 rounded hover:bg-gray-800">
+    <div className={rowClassName}>
+      {isAlerted && enablePulsingAnimation && (
+        <div className="absolute inset-0 bg-blue-500 animate-pulse-bg rounded pointer-events-none" />
+      )}
       <div className="flex items-center gap-2 justify-between">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
@@ -87,7 +93,7 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
 // Settings Panel Component
 const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig, onClose }) => {
   return (
-    <div className="fixed inset-y-0 right-0 w-80 bg-gray-800 p-6 shadow-lg border-l border-gray-700 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 w-80 bg-gray-800 p-6 shadow-lg border-l border-gray-700 overflow-y-auto z-50">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-medium text-white">Settings</h3>
         <Button 
@@ -134,17 +140,37 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="include-stopped"
-              checked={alertConfig.includeStoppedContainers}
-              onChange={(e) => setAlertConfig(prev => ({ ...prev, includeStoppedContainers: e.target.checked }))}
-              className="rounded bg-gray-700 border-gray-600"
-            />
-            <label htmlFor="include-stopped" className="text-gray-300 text-sm">
-              Include Stopped Containers
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="include-stopped"
+                checked={alertConfig.includeStoppedContainers}
+                onChange={(e) => setAlertConfig(prev => ({ ...prev, includeStoppedContainers: e.target.checked }))}
+                className="rounded bg-gray-700 border-gray-600"
+              />
+              <label htmlFor="include-stopped" className="text-gray-300 text-sm">
+                Alert on Stopped Containers
+                <div className="text-gray-500 text-xs">
+                  When enabled, stopped containers can trigger alerts if their last known metrics exceeded thresholds.
+                  Useful for detecting containers that crashed or stopped due to resource exhaustion (e.g., a container
+                  that stopped because it ran out of memory).
+                </div>
+              </label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="enable-pulse"
+                checked={alertConfig.enablePulsingAnimation}
+                onChange={(e) => setAlertConfig(prev => ({ ...prev, enablePulsingAnimation: e.target.checked }))}
+                className="rounded bg-gray-700 border-gray-600"
+              />
+              <label htmlFor="enable-pulse" className="text-gray-300 text-sm">
+                Enable Pulsing Animation
+              </label>
+            </div>
           </div>
         </div>
 
@@ -244,7 +270,8 @@ const MonitoringDashboard = () => {
   const [alertConfig, setAlertConfig] = useState({
     mode: 'any',
     minThresholds: 2,
-    includeStoppedContainers: false
+    includeStoppedContainers: false,
+    enablePulsingAnimation: true
   });
 
   const getAlertScore = useCallback((container) => {
@@ -278,7 +305,7 @@ const MonitoringDashboard = () => {
       const aPinned = pinnedServices.has(a.id);
       const bPinned = pinnedServices.has(b.id);
       if (aPinned !== bPinned) {
-        return bPinned ? 1 : -1;
+        return aPinned ? -1 : 1;
       }
       
       // Then apply the selected sort mode
@@ -326,13 +353,19 @@ const MonitoringDashboard = () => {
       </div>
 
       {showSettings && (
-        <SettingsPanel
-          thresholds={thresholds}
-          setThresholds={setThresholds}
-          alertConfig={alertConfig}
-          setAlertConfig={setAlertConfig}
-          onClose={() => setShowSettings(false)}
-        />
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowSettings(false)}
+          />
+          <SettingsPanel
+            thresholds={thresholds}
+            setThresholds={setThresholds}
+            alertConfig={alertConfig}
+            setAlertConfig={setAlertConfig}
+            onClose={() => setShowSettings(false)}
+          />
+        </>
       )}
 
       {loading && (
@@ -365,6 +398,8 @@ const MonitoringDashboard = () => {
             thresholds={thresholds}
             isPinned={pinnedServices.has(container.id)}
             onTogglePin={handleTogglePin}
+            getAlertScore={getAlertScore}
+            enablePulsingAnimation={alertConfig.enablePulsingAnimation}
           />
         ))}
 
