@@ -4,14 +4,43 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import https from 'https';
+import os from 'os';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Function to get the local IP address
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const ifname of Object.keys(interfaces)) {
+    for (const iface of interfaces[ifname]) {
+      // Skip internal and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost'; // Fallback
+};
+
 const app = express();
 
-const PROXMOX_URL = 'https://192.168.0.132:8006';
-const AUTH_HEADER = 'PVEAPIToken=root@pam!monitoring=134e4338-1b20-438b-94c0-6dfe0e3f87c9';
+// Validate required environment variables
+const requiredEnvVars = ['PROXMOX_URL', 'PROXMOX_AUTH'];
+const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+if (missingEnvVars.length > 0) {
+  console.error('Missing required environment variables:', missingEnvVars.join(', '));
+  console.error('Please check your .env file');
+  process.exit(1);
+}
+
+const PROXMOX_URL = process.env.PROXMOX_URL;
+const AUTH_HEADER = process.env.PROXMOX_AUTH;
+const PORT = process.env.PORT || 5173;
 
 // Create custom HTTPS agent that ignores self-signed certs
 const httpsAgent = new https.Agent({
@@ -37,6 +66,10 @@ app.get('/api/nodes/minipc/lxc', async (req, res) => {
       agent: httpsAgent
     });
     
+    if (!response.ok) {
+      throw new Error(`Proxmox API responded with status: ${response.status}`);
+    }
+    
     const data = await response.json();
     console.log('Proxmox response:', JSON.stringify(data).substring(0, 200));
     
@@ -55,8 +88,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-const PORT = 5173;
+const serverIP = getLocalIP();
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://192.168.0.187:${PORT}`);
+  console.log(`Server running on http://${serverIP}:${PORT}`);
   console.log('Ready to proxy requests to:', PROXMOX_URL);
 });
