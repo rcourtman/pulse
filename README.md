@@ -43,6 +43,20 @@ Pulse is a monitoring dashboard application built with React, Vite, and Tailwind
 * @types/react ^18.2.56
 * @types/react-dom ^18.2.19
 
+## Features
+
+### Real-time Monitoring
+- CPU, Memory, Disk, and Network usage tracking
+- Color-coded thresholds for quick status identification
+- Configurable alert thresholds with toggle option
+- Service pinning for priority monitoring
+
+### Customizable Settings
+- Adjustable threshold values for all metrics
+- Enable/disable threshold indicators
+- Pin important services to the top
+- Sort by any metric
+
 ## Architecture
 
 The application consists of two main components:

@@ -23,10 +23,13 @@ const getProgressBarColor = (value) => {
 const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
-  const rowClassName = `relative grid grid-cols-5 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
+  const rowClassName = `relative grid grid-cols-6 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
 
-  // Colors based on whether we're in pinned mode or threshold mode
-  const nameColor = isPinned ? 'text-white' : (isRunning ? 'text-gray-200' : 'text-gray-500');
+  // In pinned mode, only pinned containers get white text, others are grey
+  // In unpinned mode, running containers are light grey, stopped are dark grey
+  const nameColor = hasPinnedContainers
+    ? (isPinned ? 'text-white' : 'text-gray-500')
+    : (isRunning ? 'text-gray-200' : 'text-gray-500');
   const pinColor = isPinned ? 'text-blue-400' : 'text-gray-500';
 
   // In pinned mode, only pinned containers get white text, others are grey
@@ -34,6 +37,9 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
   const getMetricColor = (value, threshold) => {
     if (hasPinnedContainers) {
       return isPinned ? 'text-white' : 'text-gray-500';
+    }
+    if (!thresholds.enabled) {
+      return isRunning ? 'text-white' : 'text-gray-500';
     }
     return !isRunning || value < threshold ? 'text-gray-500' : 'text-white';
   };
@@ -82,17 +88,19 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
           />
         </div>
       </div>
-      <div className="text-gray-200 flex gap-2 justify-end items-center">
+      <div className="text-gray-200 flex gap-2 items-center">
         <div className="flex gap-2">
           <span className={netInColor}>↑ {formatNetworkRate(container.networkIn)}</span>
           <span className="mx-1 text-gray-500">|</span>
           <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
         </div>
+      </div>
+      <div className="flex items-center justify-center w-10">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => onTogglePin(container.id)}
-          className={`h-6 w-6 ml-2 ${pinColor} hover:text-blue-400`}
+          className={`h-6 w-6 ${pinColor} hover:text-blue-400`}
         >
           <Pin className="h-4 w-4" />
         </Button>
@@ -120,7 +128,18 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
       <div className="space-y-6">
         {/* Thresholds */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-200">Alert Thresholds</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-gray-200">Alert Thresholds</h4>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-400">Enabled</label>
+              <input
+                type="checkbox"
+                checked={thresholds.enabled}
+                onChange={(e) => setThresholds(prev => ({ ...prev, enabled: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+            </div>
+          </div>
           
           <div className="space-y-2">
             <label className="text-gray-300 text-sm flex justify-between">
@@ -204,7 +223,8 @@ const DEFAULT_THRESHOLDS = {
   cpu: 5,
   memory: 80,
   disk: 80,
-  network: 1024
+  network: 1024,
+  enabled: true
 };
 
 const DEFAULT_ALERT_CONFIG = {
@@ -271,7 +291,7 @@ const MonitoringDashboard = () => {
   }, []);
 
   const getAlertScore = useCallback((container) => {
-    if (!alertConfig.includeStoppedContainers && container.status !== 'running') {
+    if (!thresholds.enabled || (!alertConfig.includeStoppedContainers && container.status !== 'running')) {
       return 0;
     }
 
@@ -376,7 +396,7 @@ const MonitoringDashboard = () => {
       )}
 
       <div className="space-y-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
-        <div className="grid grid-cols-5 gap-4 px-4 py-2 text-sm font-medium text-gray-400">
+        <div className="grid grid-cols-6 gap-4 px-4 py-2 text-sm font-medium text-gray-400">
           <span className="text-gray-400">Name</span>
           <div>
             <SortableHeader
@@ -408,17 +428,17 @@ const MonitoringDashboard = () => {
               Disk
             </SortableHeader>
           </div>
-          <div className="text-right">
+          <div>
             <SortableHeader
               field="network"
               currentField={sortField}
               direction={sortDirection}
               onSort={handleSort}
-              className="justify-end ml-auto"
             >
               Network
             </SortableHeader>
           </div>
+          <div className="w-10"></div>
         </div>
         
         {sortedContainers.map((container) => (
