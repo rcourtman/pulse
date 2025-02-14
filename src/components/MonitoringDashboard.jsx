@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Settings2, Pin, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Settings2, Pin, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Square } from "lucide-react";
 import { Button } from "./ui/button";
 import useContainerData from './useContainerData';
 
@@ -20,7 +20,7 @@ const getProgressBarColor = (value) => {
   return 'bg-green-500';
 };
 
-const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers }) => {
+const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers, pulseKey }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
   const rowClassName = `relative grid grid-cols-6 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
@@ -53,7 +53,10 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
   return (
     <div className={rowClassName}>
       {(isPinned || (!hasPinnedContainers && isAlerted)) && (
-        <div className="absolute inset-0 bg-blue-500 animate-pulse-bg rounded pointer-events-none" />
+        <div
+          key={pulseKey}
+          className="absolute inset-0 bg-blue-500/20 rounded pointer-events-none"
+        />
       )}
       <div className="flex items-center gap-2">
         <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
@@ -95,12 +98,12 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
           <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
         </div>
       </div>
-      <div className="flex items-center justify-center w-10">
+      <div className="flex items-center justify-center w-8">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => onTogglePin(container.id)}
-          className={`h-6 w-6 ${pinColor} hover:text-blue-400`}
+          className={`h-5 w-5 ${pinColor} hover:text-blue-400`}
         >
           <Pin className="h-4 w-4" />
         </Button>
@@ -255,6 +258,7 @@ const MonitoringDashboard = () => {
   const [sortField, setSortField] = useState('alert');
   const [sortDirection, setSortDirection] = useState('desc');
   const [pinnedServices, setPinnedServices] = useState(new Set());
+  const [pulseKey, setPulseKey] = useState(Date.now());
 
   const handleSort = useCallback((field) => {
     if (field === 'alert') return; // Prevent direct clicking of alert sort
@@ -281,6 +285,12 @@ const MonitoringDashboard = () => {
       }
       return newPinned;
     });
+    setPulseKey(Date.now());
+  }, []);
+
+  const handleClearPins = useCallback(() => {
+    setPinnedServices(new Set());
+    setPulseKey(Date.now());
   }, []);
   const [thresholds, setThresholds] = useState(DEFAULT_THRESHOLDS);
   const [alertConfig, setAlertConfig] = useState(DEFAULT_ALERT_CONFIG);
@@ -438,7 +448,18 @@ const MonitoringDashboard = () => {
               Network
             </SortableHeader>
           </div>
-          <div className="w-10"></div>
+          <div className="w-8 flex justify-center">
+            {pinnedServices.size > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClearPins}
+                className="h-5 w-5 text-gray-400 hover:text-white"
+              >
+                <Square className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         </div>
         
         {sortedContainers.map((container) => (
