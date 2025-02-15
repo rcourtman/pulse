@@ -2,12 +2,11 @@ import React, { useState, useCallback } from 'react';
 
 const API_ENDPOINT = '/api/nodes/minipc/lxc';
 
-const useContainerData = () => {
+const useContainerData = (credentials) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const previousStats = React.useRef({});
-  // Store smoothed values for each container
   const smoothedValues = React.useRef({});
   const lastFetchTime = React.useRef(Date.now());
 
@@ -19,17 +18,43 @@ const useContainerData = () => {
   };
 
   const fetchData = useCallback(async (signal) => {
+    if (!credentials) {
+      console.log('No credentials provided to useContainerData');
+      setError('No credentials provided');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch(API_ENDPOINT, { signal });
+      console.log('Fetching data with credentials:', {
+        url: credentials.proxmoxUrl,
+        token: credentials.apiToken,
+        // Don't log the secret
+      });
+
+      const response = await fetch(API_ENDPOINT, { 
+        signal,
+        headers: {
+          'X-Proxmox-Auth': `PVEAPIToken=${credentials.apiToken}=${credentials.apiTokenSecret}`,
+          'X-Proxmox-URL': credentials.proxmoxUrl
+        }
+      });
+
+      console.log('API response status:', response.status);
+      
       const currentTime = Date.now();
       const timeDiff = (currentTime - lastFetchTime.current) / 1000; // seconds
       lastFetchTime.current = currentTime;
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const result = await response.json();
+      console.log('API response data:', result);
+
       if (result?.data) {
         const containers = result.data.map((container) => {
           const prevStats = previousStats.current[container.vmid];
@@ -87,17 +112,25 @@ const useContainerData = () => {
         });
         previousStats.current = newStats;
         setData(containers);
+        setError(null);
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
+        console.error('Error in useContainerData:', err);
         setError(err.message);
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [credentials]);
 
   React.useEffect(() => {
+    if (!credentials) {
+      console.log('No credentials in useEffect, skipping fetch setup');
+      return;
+    }
+    
+    console.log('Setting up data fetching interval');
     const controller = new AbortController();
     fetchData(controller.signal);
     const interval = setInterval(() => fetchData(controller.signal), 2000);
@@ -105,7 +138,7 @@ const useContainerData = () => {
       clearInterval(interval);
       controller.abort();
     };
-  }, [fetchData]);
+  }, [fetchData, credentials]);
 
   return { data, loading, error };
 };

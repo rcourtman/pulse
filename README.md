@@ -4,6 +4,80 @@
 
 Pulse is a monitoring dashboard application built with React, Vite, and Tailwind CSS. It provides real-time insights into your Proxmox server, allowing you to track key metrics and identify potential issues.
 
+## Features
+
+### Real-time Monitoring
+- CPU, Memory, Disk, and Network usage tracking
+- Color-coded thresholds for quick status identification
+- Configurable alert thresholds with toggle option
+- Service pinning for priority monitoring
+
+### Customizable Settings
+- Adjustable threshold values for all metrics
+- Enable/disable threshold indicators
+- Pin important services to the top
+- Sort by any metric
+
+### Easy Onboarding
+- Interactive setup wizard
+- Step-by-step guide for creating Proxmox API tokens
+- Automatic token validation
+- Secure credential storage
+
+## Quick Start
+
+1. Clone the repository:
+    ```bash
+    git clone <repository_url>
+    ```
+
+2. Navigate to the project directory:
+    ```bash
+    cd pulse
+    ```
+
+3. Install the dependencies:
+    ```bash
+    npm install
+    ```
+
+4. Start the development environment:
+    ```bash
+    npm run dev
+    ```
+
+5. Open your browser and navigate to `http://localhost:5173`
+
+6. Follow the onboarding wizard to connect to your Proxmox server
+
+## Connecting to Proxmox
+
+The application includes an interactive setup wizard that will guide you through:
+
+1. Creating a Proxmox API token
+2. Configuring your connection
+3. Validating your credentials
+
+### Manual Token Creation
+
+If you prefer to create the token manually:
+
+1. Log in to your Proxmox VE web interface
+2. Navigate to Datacenter → Permissions → API Tokens
+3. Click "Add" to create a new API token
+4. Select a user (e.g., root@pam)
+5. Enter "monitoring" as the token ID
+6. ⚠️ IMPORTANT: Uncheck "Privilege Separation"
+7. Click "Add" and save the token value securely
+
+## Architecture
+
+The application consists of two main components:
+- A React application served by Vite's development server on port 5173
+- An Express backend server running on port 3001 that proxies requests to your Proxmox server
+
+The React application communicates with the backend through a configured proxy, allowing seamless API interactions while avoiding CORS issues.
+
 ## Technologies Used
 
 ### Core Dependencies
@@ -43,80 +117,32 @@ Pulse is a monitoring dashboard application built with React, Vite, and Tailwind
 * @types/react ^18.2.56
 * @types/react-dom ^18.2.19
 
-## Features
+## Development
 
-### Real-time Monitoring
-- CPU, Memory, Disk, and Network usage tracking
-- Color-coded thresholds for quick status identification
-- Configurable alert thresholds with toggle option
-- Service pinning for priority monitoring
+To start both the frontend and backend servers concurrently:
+```bash
+npm run dev
+```
 
-### Customizable Settings
-- Adjustable threshold values for all metrics
-- Enable/disable threshold indicators
-- Pin important services to the top
-- Sort by any metric
+Or run them separately:
+```bash
+# Start Vite development server
+npm run dev:vite
 
-## Architecture
+# Start Express backend server
+npm run dev:server
+```
 
-The application consists of two main components:
-- A React application served by Vite's development server on port 5173
-- An Express backend server running on port 3001 that proxies requests to your Proxmox server
+The servers will be available at:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3001`
 
-The React application communicates with the backend through a configured proxy, allowing seamless API interactions while avoiding CORS issues.
+## Production Build
 
-## Installation
-
-1. Clone the repository:
-    ```bash
-    git clone <repository_url>
-    ```
-
-2. Navigate to the project directory:
-    ```bash
-    cd pulse
-    ```
-
-3. Install the dependencies:
-    ```bash
-    npm install
-    ```
-
-4. Create a .env file in the root directory with the following variables:
-    ```
-    PROXMOX_URL=https://your-proxmox-server:8006
-    PROXMOX_AUTH=PVEAPIToken=root@pam!monitoring=your-token-here
-    PORT=3001
-    ```
-
-## Usage
-
-1. Start the development environment:
-
-    You can start both the frontend and backend servers concurrently:
-    ```bash
-    npm run dev
-    ```
-
-    Or run them separately:
-    ```bash
-    # Start Vite development server
-    npm run dev:vite
-
-    # Start Express backend server
-    npm run dev:server
-    ```
-
-    The servers will be available at:
-    - Frontend: `http://localhost:5173`
-    - Backend: `http://localhost:3001`
-
-2. Open your browser and navigate to `http://localhost:5173`.
-
-3. Build for production:
-    ```bash
-    npm run build
-    ```
+To build for production:
+```bash
+npm run build
+```
 
 ## Contributing
 

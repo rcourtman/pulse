@@ -20,6 +20,7 @@ const getProgressBarColor = (value) => {
   return 'bg-green-500';
 };
 
+// ContainerRow component remains the same
 const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers, pulseKey }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
@@ -137,7 +138,7 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
   );
 });
 
-// Settings Panel Component
+// Settings Panel Component remains the same
 const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig, onClose, onReset }) => {
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-gray-800 p-6 shadow-lg border-l border-gray-700 overflow-y-auto z-50">
@@ -265,8 +266,8 @@ const SortableHeader = ({ field, currentField, direction, onSort, children, clas
   );
 };
 
-const MonitoringDashboard = () => {
-  const { data: containers, loading, error } = useContainerData();
+const MonitoringDashboard = ({ credentials }) => {
+  const { data: containers, loading, error } = useContainerData(credentials);
   const [showSettings, setShowSettings] = useState(false);
   const [sortField, setSortField] = useState('alert');
   const [sortDirection, setSortDirection] = useState('desc');
@@ -498,6 +499,7 @@ const MonitoringDashboard = () => {
             onTogglePin={handleTogglePin}
             getAlertScore={getAlertScore}
             hasPinnedContainers={pinnedServices.size > 0}
+            pulseKey={pulseKey}
           />
         ))}
 
