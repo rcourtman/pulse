@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Settings2, Pin, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Square } from "lucide-react";
+import { Settings2, Pin, ArrowUpDown, ArrowUp, ArrowDown, Gauge, RotateCcw } from "lucide-react";
 import { Button } from "./ui/button";
 import useContainerData from './useContainerData';
 
@@ -23,7 +23,7 @@ const getProgressBarColor = (value) => {
 const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, isPinned, onTogglePin, getAlertScore, hasPinnedContainers, pulseKey }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
-  const rowClassName = `relative grid grid-cols-6 gap-4 px-4 py-2 rounded hover:bg-gray-800`;
+  const rowClassName = `relative grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-4 py-2 rounded hover:bg-gray-800`;
 
   // In pinned mode, only pinned containers get white text, others are grey
   // In unpinned mode, running containers are light grey, stopped are dark grey
@@ -65,7 +65,12 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
+        <div className="flex items-center gap-1">
+          <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
+          {container.cpu >= thresholds.cpu && thresholds.enabled && (
+            <Gauge className="h-4 w-4 text-blue-400" />
+          )}
+        </div>
         <div className="flex-1 bg-gray-700 rounded-full h-2">
           <div
             className={`${getProgressBarColor(container.cpu)} h-full rounded-full transition-all duration-300`}
@@ -74,7 +79,12 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`w-12 ${memColor}`}>{container.memory}%</span>
+        <div className="flex items-center gap-1">
+          <span className={`w-12 ${memColor}`}>{container.memory}%</span>
+          {container.memory >= thresholds.memory && thresholds.enabled && (
+            <Gauge className="h-4 w-4 text-blue-400" />
+          )}
+        </div>
         <div className="flex-1 bg-gray-700 rounded-full h-2">
           <div
             className={`${getProgressBarColor(container.memory)} h-full rounded-full transition-all duration-300`}
@@ -83,7 +93,12 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <span className={`w-12 ${diskColor}`}>{container.disk}%</span>
+        <div className="flex items-center gap-1">
+          <span className={`w-12 ${diskColor}`}>{container.disk}%</span>
+          {container.disk >= thresholds.disk && thresholds.enabled && (
+            <Gauge className="h-4 w-4 text-blue-400" />
+          )}
+        </div>
         <div className="flex-1 bg-gray-700 rounded-full h-2">
           <div
             className={`${getProgressBarColor(container.disk)} h-full rounded-full transition-all duration-300`}
@@ -93,12 +108,22 @@ const ContainerRow = React.memo(({ container, getProgressBarColor, thresholds, i
       </div>
       <div className="text-gray-200 flex gap-2 items-center">
         <div className="flex gap-2">
-          <span className={netInColor}>↑ {formatNetworkRate(container.networkIn)}</span>
+          <div className="flex items-center gap-1">
+            <span className={netInColor}>↑ {formatNetworkRate(container.networkIn)}</span>
+            {container.networkIn >= thresholds.network && thresholds.enabled && (
+              <Gauge className="h-4 w-4 text-blue-400" />
+            )}
+          </div>
           <span className="mx-1 text-gray-500">|</span>
-          <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
+          <div className="flex items-center gap-1">
+            <span className={netOutColor}>↓ {formatNetworkRate(container.networkOut)}</span>
+            {container.networkOut >= thresholds.network && thresholds.enabled && (
+              <Gauge className="h-4 w-4 text-blue-400" />
+            )}
+          </div>
         </div>
       </div>
-      <div className="flex items-center justify-center w-8">
+      <div className="flex items-center justify-center">
         <Button
           variant="ghost"
           size="icon"
@@ -129,21 +154,9 @@ const SettingsPanel = ({ thresholds, setThresholds, alertConfig, setAlertConfig,
       </div>
 
       <div className="space-y-6">
-        {/* Thresholds */}
+        {/* Threshold Values */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-200">Alert Thresholds</h4>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-400">Enabled</label>
-              <input
-                type="checkbox"
-                checked={thresholds.enabled}
-                onChange={(e) => setThresholds(prev => ({ ...prev, enabled: e.target.checked }))}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          
+          <h4 className="text-sm font-medium text-gray-200">Threshold Values</h4>
           <div className="space-y-2">
             <label className="text-gray-300 text-sm flex justify-between">
               <span>CPU</span>
@@ -366,12 +379,25 @@ const MonitoringDashboard = () => {
           <Button
             variant="outline"
             size="icon"
+            onClick={() => setThresholds(prev => ({ ...prev, enabled: !prev.enabled }))}
+            className={`relative group bg-gray-800 hover:bg-gray-700
+              ${thresholds.enabled ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
+              transition-all duration-300 ease-out
+              ${pinnedServices.size > 0 ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+            disabled={pinnedServices.size > 0}
+            title={`Alert Thresholds ${thresholds.enabled ? 'On' : 'Off'}`}
+          >
+            <Gauge className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setShowSettings(!showSettings)}
             className="bg-gray-800 hover:bg-gray-700 text-white"
           >
             <Settings2 className="h-4 w-4" />
           </Button>
-
         </div>
       </div>
 
@@ -406,7 +432,7 @@ const MonitoringDashboard = () => {
       )}
 
       <div className="space-y-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
-        <div className="grid grid-cols-6 gap-4 px-4 py-2 text-sm font-medium text-gray-400">
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-4 py-2 text-sm font-medium text-gray-400">
           <span className="text-gray-400">Name</span>
           <div>
             <SortableHeader
@@ -456,7 +482,7 @@ const MonitoringDashboard = () => {
                 onClick={handleClearPins}
                 className="h-5 w-5 text-gray-400 hover:text-white"
               >
-                <Square className="h-3 w-3" />
+                <RotateCcw className="h-3 w-3" />
               </Button>
             )}
           </div>
