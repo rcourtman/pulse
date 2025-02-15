@@ -6,6 +6,7 @@ import { dirname } from 'path';
 import https from 'https';
 import os from 'os';
 import dotenv from 'dotenv';
+import logger, { requestLogger, getLoggerWithRequestId } from './src/utils/logger.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,9 @@ const PORT = process.env.PORT || 3001;
 
 // Add JSON parsing middleware
 app.use(express.json());
+
+// Add request logging middleware
+app.use(requestLogger);
 
 // Add CORS headers
 app.use((req, res, next) => {
@@ -60,14 +64,16 @@ app.post('/api/validate-token', async (req, res) => {
     });
   }
 
+  const log = getLoggerWithRequestId(req.requestId);
+  
   try {
-    console.log(`[${new Date().toISOString()}] Validating token for URL:`, proxmoxUrl);
+    log.info('Validating token for URL', { proxmoxUrl });
     
     // Ensure the URL ends with /api2/json
     const baseUrl = proxmoxUrl.endsWith('/') ? proxmoxUrl.slice(0, -1) : proxmoxUrl;
     const apiUrl = `${baseUrl}/api2/json/version`;
 
-    console.log(`[${new Date().toISOString()}] Making request to:`, apiUrl);
+    log.debug('Making request to Proxmox API', { apiUrl });
 
     // Try to fetch the version endpoint as a simple validation
     const response = await fetch(apiUrl, {
@@ -77,42 +83,53 @@ app.post('/api/validate-token', async (req, res) => {
       agent: httpsAgent
     });
 
-    console.log(`[${new Date().toISOString()}] Validation response status:`, response.status);
+    log.debug('Validation response received', { status: response.status });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[${new Date().toISOString()}] Validation error response:`, errorText);
+      log.error('Token validation failed', {
+        status: response.status,
+        statusText: response.statusText,
+        errorText
+      });
       throw new Error(`Failed to validate token: ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log(`[${new Date().toISOString()}] Validation successful:`, data);
+    log.info('Token validation successful', {
+      version: data.data.version
+    });
     
     // If we get here, the token is valid
-    res.json({ 
+    res.json({
       valid: true,
-      version: data.data.version 
+      version: data.data.version
     });
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Token validation error:`, error);
-    res.status(401).json({ 
-      valid: false, 
-      message: 'Invalid credentials or unable to connect to Proxmox server' 
+    log.error('Token validation error', {
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(401).json({
+      valid: false,
+      message: 'Invalid credentials or unable to connect to Proxmox server'
     });
   }
 });
 
 // Handle the API proxy route
 app.get('/api/nodes/minipc/lxc', async (req, res) => {
+  const log = getLoggerWithRequestId(req.requestId);
+
   try {
     // Get credentials from request headers
     const authHeader = req.headers['x-proxmox-auth'];
     const proxmoxUrl = req.headers['x-proxmox-url'];
 
-    console.log(`[${new Date().toISOString()}] Received API request with URL:`, proxmoxUrl);
+    log.info('Received API request', { proxmoxUrl });
 
     if (!authHeader || !proxmoxUrl) {
-      console.error(`[${new Date().toISOString()}] Missing credentials:`, {
+      log.error('Missing credentials', {
         hasAuth: !!authHeader,
         hasUrl: !!proxmoxUrl
       });
@@ -122,7 +139,7 @@ app.get('/api/nodes/minipc/lxc', async (req, res) => {
     const baseUrl = proxmoxUrl.endsWith('/') ? proxmoxUrl.slice(0, -1) : proxmoxUrl;
     const apiUrl = `${baseUrl}/api2/json/nodes/minipc/lxc`;
 
-    console.log(`[${new Date().toISOString()}] Making request to:`, apiUrl);
+    log.debug('Making request to Proxmox API', { apiUrl });
 
     const response = await fetch(apiUrl, {
       headers: {
@@ -133,15 +150,23 @@ app.get('/api/nodes/minipc/lxc', async (req, res) => {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[${new Date().toISOString()}] API error response:`, errorText);
+      log.error('Proxmox API error', {
+        status: response.status,
+        errorText
+      });
       throw new Error(`Proxmox API responded with status: ${response.status}`);
     }
     
     const data = await response.json();
-    console.log(`[${new Date().toISOString()}] API request successful`);
+    log.info('API request successful', {
+      containerCount: data.data?.length
+    });
     res.json(data);
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error proxying request:`, error);
+    log.error('Error proxying request', {
+      error: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ error: error.message });
   }
 });
@@ -156,6 +181,32 @@ app.get('*', (req, res) => {
 
 const serverIP = getLocalIP();
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[${new Date().toISOString()}] Server running on http://${serverIP}:${PORT}`);
-  console.log(`[${new Date().toISOString()}] Ready to proxy requests to Proxmox`);
+  // Log startup info to file only
+  logger.info('Server details', {
+    url: `http://${serverIP}:${PORT}`,
+    environment: process.env.NODE_ENV || 'development',
+    logLevel: process.env.LOG_LEVEL || 'info'
+  });
+  
+  // Console startup messages
+  logger.info('Server started');
+  logger.info('Ready to proxy requests to Proxmox');
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception', {
+    error: error.message,
+    stack: error.stack
+  });
+  // Give logger time to write before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Promise Rejection', {
+    reason: reason instanceof Error ? reason.message : reason,
+    stack: reason instanceof Error ? reason.stack : undefined
+  });
 });
