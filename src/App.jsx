@@ -1,24 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import MonitoringDashboard from './components/MonitoringDashboard';
 import OnboardingWizard from './components/OnboardingWizard';
+import { useSettingsStore } from './stores/settingsStore';
 
 function App() {
-  const [credentials, setCredentials] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check for stored credentials on component mount
-    const storedCredentials = localStorage.getItem('proxmox_credentials');
-    if (storedCredentials) {
-      try {
-        setCredentials(JSON.parse(storedCredentials));
-      } catch (error) {
-        console.error('Failed to parse stored credentials:', error);
-        localStorage.removeItem('proxmox_credentials');
-      }
-    }
-    setIsLoading(false);
-  }, []);
+  const { 
+    credentials,
+    setCredentials,
+    isLoading
+  } = useSettingsStore();
 
   const handleOnboardingComplete = (newCredentials) => {
     setCredentials(newCredentials);

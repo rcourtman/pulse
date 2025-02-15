@@ -1,146 +1,160 @@
-import React, { useState, useCallback } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
+import { useSettingsStore } from '../stores/settingsStore';
+import { useContainerStore } from '../stores/containerStore';
 
 const API_ENDPOINT = '/api/nodes/minipc/lxc';
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000;
 
 const useContainerData = (credentials) => {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const previousStats = React.useRef({});
-  const smoothedValues = React.useRef({});
-  const lastFetchTime = React.useRef(Date.now());
+  const [initialLoad, setInitialLoad] = useState(true);
+  
+  const {
+    setContainers,
+    setLoading,
+    setError,
+    clearError
+  } = useContainerStore();
 
-  // Asymmetric smoothing: rises quickly, falls slowly
-  const smoothValue = (newValue, oldValue) => {
-    if (oldValue === undefined) return newValue;
-    const factor = newValue > oldValue ? 0.3 : 0.7;
-    return oldValue * (1 - factor) + newValue * factor;
-  };
+  const { userPreferences } = useSettingsStore();
+  const { refreshRate } = userPreferences;
 
-  const fetchData = useCallback(async (signal) => {
-    if (!credentials) {
-      console.log('No credentials provided to useContainerData');
-      setError('No credentials provided');
-      setLoading(false);
-      return;
+  const previousStats = useRef({});
+  const retryCount = useRef(0);
+  const retryTimeout = useRef(null);
+  const isMounted = useRef(true);
+  const hasInitialData = useRef(false);
+
+  const handleError = useCallback((error) => {
+    if (!isMounted.current) return;
+
+    console.error('Error fetching container data:', error);
+    
+    if (retryCount.current < MAX_RETRIES) {
+      const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount.current);
+      console.log(`Retrying in ${delay}ms (attempt ${retryCount.current + 1}/${MAX_RETRIES})`);
+      
+      if (retryTimeout.current) {
+        clearTimeout(retryTimeout.current);
+      }
+
+      retryTimeout.current = setTimeout(() => {
+        if (isMounted.current) {
+          retryCount.current += 1;
+          fetchData();
+        }
+      }, delay);
+    } else {
+      setError(error.message);
+      retryCount.current = 0;
     }
+  }, [setError]);
+
+  const fetchData = useCallback(async () => {
+    if (!credentials || !isMounted.current) return;
 
     try {
-      console.log('Fetching data with credentials:', {
-        url: credentials.proxmoxUrl,
-        token: credentials.apiToken,
-        // Don't log the secret
-      });
+      // Only set loading on initial fetch
+      if (!hasInitialData.current) {
+        setLoading(true);
+      }
+      clearError();
 
-      const response = await fetch(API_ENDPOINT, { 
-        signal,
+      const response = await fetch(API_ENDPOINT, {
         headers: {
           'X-Proxmox-Auth': `PVEAPIToken=${credentials.apiToken}=${credentials.apiTokenSecret}`,
           'X-Proxmox-URL': credentials.proxmoxUrl
         }
       });
 
-      console.log('API response status:', response.status);
-      
-      const currentTime = Date.now();
-      const timeDiff = (currentTime - lastFetchTime.current) / 1000; // seconds
-      lastFetchTime.current = currentTime;
-      
+      if (!isMounted.current) return;
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      console.log('API response data:', result);
+
+      if (!isMounted.current) return;
 
       if (result?.data) {
-        const containers = result.data.map((container) => {
-          const prevStats = previousStats.current[container.vmid];
-          let instantNetIn, instantNetOut;
-          if (prevStats) {
-            instantNetIn = Math.max(0, container.netin - prevStats.netin) / timeDiff / 1024;
-            instantNetOut = Math.max(0, container.netout - prevStats.netout) / timeDiff / 1024;
-          } else {
-            instantNetIn = 0;
-            instantNetOut = 0;
-          }
-          
-          const instantCpu = Math.round((container.cpu || 0) * 1000) / 10;
-          const instantMemory = container.mem && container.maxmem ? 
-            Math.round((container.mem / container.maxmem) * 100) : 0;
-          const instantDisk = container.disk && container.maxdisk ? 
-            Math.round((container.disk / container.maxdisk) * 100) : 0;
+        const containers = result.data.map(container => {
+          // Calculate network rates
+          const prevStats = previousStats.current[container.vmid] || {};
+          const networkIn = prevStats.netin ? 
+            Math.max(0, (container.netin - prevStats.netin) / refreshRate * 1000 / 1024) : 0;
+          const networkOut = prevStats.netout ? 
+            Math.max(0, (container.netout - prevStats.netout) / refreshRate * 1000 / 1024) : 0;
 
-          const prevSmooth = smoothedValues.current[container.vmid] || {};
-          const smoothedCpu = smoothValue(instantCpu, prevSmooth.cpu);
-          const smoothedMemory = Math.round(smoothValue(instantMemory, prevSmooth.memory));
-          const smoothedDisk = Math.round(smoothValue(instantDisk, prevSmooth.disk));
-          const smoothedNetIn = smoothValue(instantNetIn, prevSmooth.networkIn);
-          const smoothedNetOut = smoothValue(instantNetOut, prevSmooth.networkOut);
-          const smoothedNetwork = smoothedNetIn + smoothedNetOut;
-
-          smoothedValues.current[container.vmid] = {
-            cpu: smoothedCpu,
-            memory: smoothedMemory,
-            disk: smoothedDisk,
-            networkIn: smoothedNetIn,
-            networkOut: smoothedNetOut,
+          // Update previous stats
+          previousStats.current[container.vmid] = {
+            netin: container.netin,
+            netout: container.netout
           };
 
           return {
             name: container.name || 'Unknown',
             id: container.vmid,
-            cpu: smoothedCpu,
-            memory: smoothedMemory,
-            disk: smoothedDisk,
-            networkIn: smoothedNetIn,
-            networkOut: smoothedNetOut,
-            network: smoothedNetwork,
+            cpu: Math.round((container.cpu || 0) * 1000) / 10,
+            memory: container.mem && container.maxmem ? 
+              Math.round((container.mem / container.maxmem) * 100) : 0,
+            disk: container.disk && container.maxdisk ? 
+              Math.round((container.disk / container.maxdisk) * 100) : 0,
+            networkIn,
+            networkOut,
             ip: container.ip,
             status: container.status || 'unknown'
           };
         });
 
-        const newStats = {};
-        result.data.forEach((container) => {
-          newStats[container.vmid] = {
-            netin: container.netin,
-            netout: container.netout
-          };
-        });
-        previousStats.current = newStats;
-        setData(containers);
-        setError(null);
-      }
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('Error in useContainerData:', err);
-        setError(err.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [credentials]);
+        setContainers(containers);
+        clearError();
+        retryCount.current = 0;
 
-  React.useEffect(() => {
+        // Mark initial data as received
+        if (!hasInitialData.current) {
+          hasInitialData.current = true;
+          setInitialLoad(false);
+        }
+      }
+    } catch (error) {
+      handleError(error);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  }, [credentials, refreshRate, setContainers, setLoading, clearError, handleError]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    hasInitialData.current = false;
+    setInitialLoad(true);
+
     if (!credentials) {
-      console.log('No credentials in useEffect, skipping fetch setup');
+      setError('No credentials provided');
+      setInitialLoad(false);
       return;
     }
-    
-    console.log('Setting up data fetching interval');
-    const controller = new AbortController();
-    fetchData(controller.signal);
-    const interval = setInterval(() => fetchData(controller.signal), 2000);
-    return () => {
-      clearInterval(interval);
-      controller.abort();
-    };
-  }, [fetchData, credentials]);
 
-  return { data, loading, error };
+    // Initial fetch
+    fetchData();
+
+    // Set up polling interval
+    const interval = setInterval(fetchData, refreshRate);
+
+    return () => {
+      isMounted.current = false;
+      clearInterval(interval);
+      if (retryTimeout.current) {
+        clearTimeout(retryTimeout.current);
+      }
+    };
+  }, [credentials, refreshRate, fetchData, setError]);
+
+  // Return container data from store and initial load state
+  const { containers, loading, error } = useContainerStore();
+  return { data: containers, loading, error, initialLoad };
 };
 
 export default useContainerData;
