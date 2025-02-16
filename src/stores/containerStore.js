@@ -83,12 +83,17 @@ export const useContainerStore = create((set, get) => ({
       if (searchTerms.length > 0) {
         return searchTerms.some(term => {
           // Check for metric filters (e.g., cpu>10)
-          const metricMatch = term.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
+          const metricMatch = term.match(/^(cpu|memory|disk|network)([<>])(\d+)%?$/);
           if (metricMatch) {
             const [_, metric, operator, value] = metricMatch;
-            const containerValue = metric === 'network' ?
-              Math.max(container.networkIn, container.networkOut) :
-              container[metric];
+            let containerValue;
+            if (metric === 'network') {
+              // For network, we use the max of in/out in KB/s
+              containerValue = Math.max(container.networkIn || 0, container.networkOut || 0);
+            } else {
+              // For other metrics (cpu, memory, disk), use percentage values
+              containerValue = container[metric];
+            }
             return operator === '>' ? containerValue > parseFloat(value) : containerValue < parseFloat(value);
           }
           

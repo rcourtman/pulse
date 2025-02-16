@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings2, Pin, Gauge, RotateCcw, Search } from "lucide-react";
+import { Settings2, Pin, Gauge, RotateCcw, Search, Filter } from "lucide-react";
 import { Button } from "./ui/button";
 import { useContainerStore } from '../stores/containerStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -42,17 +42,22 @@ const SortableHeader = ({ field, children, className = "" }) => {
 };
 
 const SearchBar = () => {
-  const { searchTerms, addSearchTerm, removeSearchTerm, clearSearchTerms, filters, setFilters } = useContainerStore();
+  const { searchTerms, addSearchTerm, removeSearchTerm, clearSearchTerms, filters, setFilters, containers } = useContainerStore();
   const [inputValue, setInputValue] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const [activeFilters, setActiveFilters] = useState(() => {
     const filters = [];
-    if (filters.status !== 'all') {
-      filters.push({ type: 'status', value: filters.status });
+    const { filters: storeFilters, searchTerms } = useContainerStore.getState();
+    if (storeFilters.status !== 'all') {
+      filters.push({ type: 'status', value: storeFilters.status });
     }
-    searchTerms.forEach(term => {
-      const parsed = parseFilter(term);
-      filters.push(parsed);
-    });
+    if (searchTerms.length > 0) {
+      searchTerms.forEach(term => {
+        const parsed = parseFilter(term);
+        filters.push(parsed);
+      });
+    }
     return filters;
   });
 
@@ -65,6 +70,58 @@ const SearchBar = () => {
     { label: 'Stopped', filter: 'status:stopped' }
   ];
 
+  const getSuggestions = (input) => {
+    const suggestions = [];
+    const metricPrefixes = ['cpu>', 'cpu<', 'memory>', 'memory<', 'disk>', 'disk<', 'network>', 'network<'];
+    const statusPrefixes = ['status:'];
+
+    // Add metric suggestions
+    if (input.length === 0) {
+      metricPrefixes.forEach(prefix => suggestions.push(prefix));
+      statusPrefixes.forEach(prefix => suggestions.push(prefix));
+    } else {
+      // Match metric prefixes
+      metricPrefixes.forEach(prefix => {
+        if (prefix.startsWith(input.toLowerCase())) {
+          suggestions.push(prefix);
+        }
+      });
+
+      // Match status prefixes
+      statusPrefixes.forEach(prefix => {
+        if (prefix.startsWith(input.toLowerCase())) {
+          suggestions.push(prefix + 'running');
+          suggestions.push(prefix + 'stopped');
+        }
+      });
+
+      // If input starts with a metric prefix, suggest common values
+      const metricMatch = input.match(/^(cpu|memory|disk|network)[<>]\d*$/);
+      if (metricMatch) {
+        const metric = metricMatch[1];
+        const commonValues = metric === 'network' ? [100, 500, 1000] : [50, 80, 90];
+        const suffix = metric === 'network' ? '' : '%';
+        commonValues.forEach(value => {
+          suggestions.push(`${metric}>${value}${suffix}`);
+          suggestions.push(`${metric}<${value}${suffix}`);
+        });
+      }
+
+      // Add container name suggestions
+      if (!input.includes('>') && !input.includes('<') && !input.includes(':')) {
+        containers?.forEach(container => {
+          if (container.name.toLowerCase().includes(input.toLowerCase())) {
+            suggestions.push(container.name);
+          }
+        });
+      }
+    }
+
+    return suggestions
+      .filter(suggestion => suggestion !== input)
+      .slice(0, 5);
+  };
+
   const parseFilter = (input) => {
     const metricMatch = input.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
     const statusMatch = input.match(/^status:(running|stopped)$/);
@@ -76,7 +133,7 @@ const SearchBar = () => {
         metric,
         operator,
         value: parseFloat(value),
-        display: `${metric}${operator}${value}%`,
+        display: `${metric}${operator}${value}${metric === 'network' ? '' : '%'}`,
         raw: input
       };
     } else if (statusMatch) {
@@ -99,6 +156,21 @@ const SearchBar = () => {
 
   const handleSearch = (e) => {
     setInputValue(e.target.value);
+    setShowSuggestions(true);
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    const parsedFilter = parseFilter(suggestion);
+    if (!isFilterConflicting(parsedFilter, activeFilters)) {
+      setActiveFilters(prev => [...prev, parsedFilter]);
+      if (parsedFilter.type === 'status') {
+        setFilters({ status: parsedFilter.value });
+      } else {
+        addSearchTerm(suggestion);
+      }
+    }
+    setInputValue('');
+    setShowSuggestions(false);
   };
 
   const isFilterConflicting = (newFilter, currentFilters) => {
@@ -118,15 +190,50 @@ const SearchBar = () => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && inputValue.trim()) {
-      const newTerm = inputValue.trim();
-      const parsedFilter = parseFilter(newTerm);
+    const suggestions = getSuggestions(inputValue);
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        if (!showSuggestions) {
+          setShowSuggestions(true);
+          setSelectedSuggestionIndex(0);
+        } else {
+          setSelectedSuggestionIndex(prev => 
+            prev < suggestions.length - 1 ? prev + 1 : prev
+          );
+        }
+        break;
       
-      if (!isFilterConflicting(parsedFilter, activeFilters)) {
-        setActiveFilters(prev => [...prev, parsedFilter]);
-        addSearchTerm(newTerm);
-        setInputValue('');
-      }
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : prev);
+        break;
+      
+      case 'Enter':
+        if (showSuggestions && selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+          // Instead of submitting, populate the input with the selected suggestion
+          setInputValue(suggestions[selectedSuggestionIndex]);
+          setShowSuggestions(false);
+          setSelectedSuggestionIndex(-1);
+        } else if (inputValue.trim()) {
+          const newTerm = inputValue.trim();
+          const parsedFilter = parseFilter(newTerm);
+          
+          if (!isFilterConflicting(parsedFilter, activeFilters)) {
+            setActiveFilters(prev => [...prev, parsedFilter]);
+            addSearchTerm(newTerm);
+          }
+          setInputValue('');
+          setShowSuggestions(false);
+          setSelectedSuggestionIndex(-1);
+        }
+        break;
+      
+      case 'Escape':
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+        break;
     }
   };
 
@@ -178,9 +285,23 @@ const SearchBar = () => {
             value={inputValue}
             onChange={handleSearch}
             onKeyDown={handleKeyDown}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             placeholder="Search by name or add filters (e.g., cpu>80, memory>90)"
             className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          {showSuggestions && inputValue && (
+            <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
+              {getSuggestions(inputValue).map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={`w-full px-4 py-2 text-left ${index === selectedSuggestionIndex ? 'bg-gray-700 text-white' : 'text-gray-300 hover:bg-gray-700'} first:rounded-t-lg last:rounded-b-lg`}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -231,7 +352,9 @@ const MonitoringDashboard = ({ credentials }) => {
   const { 
     pinnedServices, 
     clearPinned,
-    error 
+    error,
+    searchTerms,
+    filters
   } = useContainerStore();
   const { 
     thresholds, 
@@ -239,6 +362,9 @@ const MonitoringDashboard = ({ credentials }) => {
     showSettings, 
     setShowSettings 
   } = useSettingsStore();
+
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount = searchTerms.length + (filters.status !== 'all' ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6">
@@ -248,6 +374,22 @@ const MonitoringDashboard = ({ credentials }) => {
           <p className="text-gray-400">Updated in real time.</p>
         </div>
         <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`relative group bg-gray-800 hover:bg-gray-700
+              ${activeFilterCount > 0 ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
+              transition-all duration-300 ease-out`}
+            title={`${showFilters ? 'Hide' : 'Show'} Filters`}
+          >
+            <Filter className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+            {activeFilterCount > 0 && (
+              <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                {activeFilterCount}
+              </div>
+            )}
+          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -298,7 +440,7 @@ const MonitoringDashboard = ({ credentials }) => {
 
       {!initialLoad && (
         <>
-          <SearchBar />
+          {showFilters && <SearchBar />}
 
           <div className="space-y-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-4 py-2 text-sm font-medium text-gray-400">
