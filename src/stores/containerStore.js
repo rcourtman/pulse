@@ -30,7 +30,16 @@ export const useContainerStore = create((set, get) => ({
   clearError: () => set({ error: null }),
 
   // Sorting
-  setSortConfig: (sortConfig) => set({ sortConfig }),
+  setSortConfig: (sortConfig) => {
+    const currentConfig = get().sortConfig;
+    if (currentConfig.field === sortConfig.field) {
+      // If clicking the same field, reset to default alert sorting
+      set({ sortConfig: { field: 'alert', direction: 'desc' } });
+    } else {
+      // New field selected, sort by highest values (desc)
+      set({ sortConfig: { field: sortConfig.field, direction: 'desc' } });
+    }
+  },
 
   // Pinned Services
   togglePinned: (containerId) => set((state) => {

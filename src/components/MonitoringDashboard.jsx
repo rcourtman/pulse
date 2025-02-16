@@ -10,29 +10,32 @@ import useContainerData from './useContainerData';
 const SortableHeader = ({ field, children, className = "" }) => {
   const { sortConfig, setSortConfig } = useContainerStore();
   const isActive = sortConfig.field === field;
-  const direction = sortConfig.direction;
 
   const handleSort = () => {
     if (field === 'alert') return;
-    
-    setSortConfig(prev => {
-      if (prev.field === field) {
-        return { field: 'alert', direction: 'desc' };
-      }
-      return { field, direction: 'desc' };
-    });
+    setSortConfig({ field });
   };
 
   return (
     <button
       onClick={handleSort}
-      className={`flex items-center gap-2 hover:text-white transition-colors ${isActive ? 'text-white' : ''} ${className}`}
+      className={`flex items-center gap-2 hover:text-white transition-colors ${isActive ? 'text-blue-400' : 'text-gray-400'} ${className}`}
     >
       {children}
-      {isActive && field !== 'alert' && (
-        <span className="text-blue-400">
-          {direction === 'desc' ? '↑' : '↓'}
-        </span>
+      {isActive && (
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
       )}
     </button>
   );
