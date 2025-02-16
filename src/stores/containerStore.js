@@ -10,10 +10,7 @@ const INITIAL_STATE = {
     direction: 'desc'
   },
   pinnedServices: new Set(),
-  searchTerms: [],
-  filters: {
-    status: 'all'
-  }
+  searchTerms: []
 };
 
 export const useContainerStore = create((set, get) => ({
@@ -54,7 +51,7 @@ export const useContainerStore = create((set, get) => ({
 
   clearPinned: () => set({ pinnedServices: new Set() }),
 
-  // Search and Filtering
+  // Search
   addSearchTerm: (term) => set((state) => ({
     searchTerms: [...state.searchTerms, term]
   })),
@@ -62,54 +59,21 @@ export const useContainerStore = create((set, get) => ({
     searchTerms: state.searchTerms.filter(t => t !== term)
   })),
   clearSearchTerms: () => set({ searchTerms: [] }),
-  setFilters: (filters) => set((state) => ({ 
-    filters: { ...state.filters, ...filters }
-  })),
 
   // Get Filtered Containers
   getFilteredContainers: () => {
     const state = get();
-    const { containers, searchTerms, filters } = state;
+    const { containers, searchTerms } = state;
     
     if (!containers) return [];
 
-    return containers.filter(container => {
-      // Status filter
-      if (filters.status !== 'all' && container.status !== filters.status) {
-        return false;
-      }
+    if (searchTerms.length === 0) return containers;
 
-      // Search terms and metric filters
-      if (searchTerms.length > 0) {
-        return searchTerms.some(term => {
-          // Check for metric filters (e.g., cpu>10)
-          const metricMatch = term.match(/^(cpu|memory|disk|network)([<>])(\d+)%?$/);
-          if (metricMatch) {
-            const [_, metric, operator, value] = metricMatch;
-            let containerValue;
-            if (metric === 'network') {
-              // For network, we use the max of in/out in KB/s
-              containerValue = Math.max(container.networkIn || 0, container.networkOut || 0);
-            } else {
-              // For other metrics (cpu, memory, disk), use percentage values
-              containerValue = container[metric];
-            }
-            return operator === '>' ? containerValue > parseFloat(value) : containerValue < parseFloat(value);
-          }
-          
-          // Check for status filters
-          const statusMatch = term.match(/^status:(running|stopped)$/);
-          if (statusMatch) {
-            return container.status === statusMatch[1];
-          }
-          
-          // Default name search
-          return container.name.toLowerCase().includes(term.toLowerCase());
-        });
-      }
-
-      return true;
-    });
+    return containers.filter(container => 
+      searchTerms.some(term => 
+        container.name.toLowerCase().includes(term.toLowerCase())
+      )
+    );
   },
 
   // Get Sorted Containers
