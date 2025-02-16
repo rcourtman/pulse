@@ -10,7 +10,7 @@ const INITIAL_STATE = {
     direction: 'desc'
   },
   pinnedServices: new Set(),
-  searchTerm: '',
+  searchTerms: [],
   filters: {
     status: 'all'
   }
@@ -55,7 +55,13 @@ export const useContainerStore = create((set, get) => ({
   clearPinned: () => set({ pinnedServices: new Set() }),
 
   // Search and Filtering
-  setSearchTerm: (searchTerm) => set({ searchTerm }),
+  addSearchTerm: (term) => set((state) => ({
+    searchTerms: [...state.searchTerms, term]
+  })),
+  removeSearchTerm: (term) => set((state) => ({
+    searchTerms: state.searchTerms.filter(t => t !== term)
+  })),
+  clearSearchTerms: () => set({ searchTerms: [] }),
   setFilters: (filters) => set((state) => ({ 
     filters: { ...state.filters, ...filters }
   })),
@@ -63,19 +69,38 @@ export const useContainerStore = create((set, get) => ({
   // Get Filtered Containers
   getFilteredContainers: () => {
     const state = get();
-    const { containers, searchTerm, filters } = state;
+    const { containers, searchTerms, filters } = state;
     
     if (!containers) return [];
 
     return containers.filter(container => {
-      // Search term filter
-      if (searchTerm && !container.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-        return false;
-      }
-
       // Status filter
       if (filters.status !== 'all' && container.status !== filters.status) {
         return false;
+      }
+
+      // Search terms and metric filters
+      if (searchTerms.length > 0) {
+        return searchTerms.some(term => {
+          // Check for metric filters (e.g., cpu>10)
+          const metricMatch = term.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
+          if (metricMatch) {
+            const [_, metric, operator, value] = metricMatch;
+            const containerValue = metric === 'network' ?
+              Math.max(container.networkIn, container.networkOut) :
+              container[metric];
+            return operator === '>' ? containerValue > parseFloat(value) : containerValue < parseFloat(value);
+          }
+          
+          // Check for status filters
+          const statusMatch = term.match(/^status:(running|stopped)$/);
+          if (statusMatch) {
+            return container.status === statusMatch[1];
+          }
+          
+          // Default name search
+          return container.name.toLowerCase().includes(term.toLowerCase());
+        });
       }
 
       return true;

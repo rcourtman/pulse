@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings2, Pin, Gauge, RotateCcw, Search } from "lucide-react";
 import { Button } from "./ui/button";
 import { useContainerStore } from '../stores/containerStore';
@@ -42,29 +42,186 @@ const SortableHeader = ({ field, children, className = "" }) => {
 };
 
 const SearchBar = () => {
-  const { searchTerm, setSearchTerm, filters, setFilters } = useContainerStore();
+  const { searchTerms, addSearchTerm, removeSearchTerm, clearSearchTerms, filters, setFilters } = useContainerStore();
+  const [inputValue, setInputValue] = useState('');
+  const [activeFilters, setActiveFilters] = useState(() => {
+    const filters = [];
+    if (filters.status !== 'all') {
+      filters.push({ type: 'status', value: filters.status });
+    }
+    searchTerms.forEach(term => {
+      const parsed = parseFilter(term);
+      filters.push(parsed);
+    });
+    return filters;
+  });
+
+  const presetFilters = [
+    { label: 'High CPU', filter: 'cpu>80' },
+    { label: 'High Memory', filter: 'memory>80' },
+    { label: 'High Disk', filter: 'disk>80' },
+    { label: 'High Network', filter: 'network>1000' },
+    { label: 'Running', filter: 'status:running' },
+    { label: 'Stopped', filter: 'status:stopped' }
+  ];
+
+  const parseFilter = (input) => {
+    const metricMatch = input.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
+    const statusMatch = input.match(/^status:(running|stopped)$/);
+
+    if (metricMatch) {
+      const [_, metric, operator, value] = metricMatch;
+      return {
+        type: 'metric',
+        metric,
+        operator,
+        value: parseFloat(value),
+        display: `${metric}${operator}${value}%`,
+        raw: input
+      };
+    } else if (statusMatch) {
+      const [_, status] = statusMatch;
+      return {
+        type: 'status',
+        value: status,
+        display: `status:${status}`,
+        raw: input
+      };
+    }
+    
+    return {
+      type: 'search',
+      value: input,
+      display: input,
+      raw: input
+    };
+  };
+
+  const handleSearch = (e) => {
+    setInputValue(e.target.value);
+  };
+
+  const isFilterConflicting = (newFilter, currentFilters) => {
+    // Check for duplicate metric type
+    if (newFilter.type === 'metric') {
+      return currentFilters.some(f => f.type === 'metric' && f.metric === newFilter.metric);
+    }
+    // Check for duplicate status
+    if (newFilter.type === 'status') {
+      return currentFilters.some(f => f.type === 'status');
+    }
+    // Check for duplicate search term
+    if (newFilter.type === 'search') {
+      return currentFilters.some(f => f.type === 'search' && f.value === newFilter.value);
+    }
+    return false;
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && inputValue.trim()) {
+      const newTerm = inputValue.trim();
+      const parsedFilter = parseFilter(newTerm);
+      
+      if (!isFilterConflicting(parsedFilter, activeFilters)) {
+        setActiveFilters(prev => [...prev, parsedFilter]);
+        addSearchTerm(newTerm);
+        setInputValue('');
+      }
+    }
+  };
+
+  const handleStatusChange = (status) => {
+    const statusFilter = { type: 'status', value: status, display: `status:${status}`, raw: `status:${status}` };
+    if (status === 'all') {
+      setActiveFilters(prev => prev.filter(f => f.type !== 'status'));
+      setFilters({ status: 'all' });
+    } else if (!isFilterConflicting(statusFilter, activeFilters)) {
+      setActiveFilters(prev => [...prev.filter(f => f.type !== 'status'), statusFilter]);
+      setFilters({ status });
+    }
+  };
+
+  const removeFilter = (filter) => {
+    setActiveFilters(prev => prev.filter(f => f.raw !== filter.raw));
+    if (filter.type === 'status') {
+      setFilters({ status: 'all' });
+    } else {
+      removeSearchTerm(filter.raw);
+    }
+  };
+
+  const clearAllFilters = () => {
+    setActiveFilters([]);
+    clearSearchTerms();
+    setFilters({ status: 'all' });
+  };
+
+  const handlePresetFilter = (filter) => {
+    const parsedFilter = parseFilter(filter);
+    if (!isFilterConflicting(parsedFilter, activeFilters)) {
+      setActiveFilters(prev => [...prev, parsedFilter]);
+      if (parsedFilter.type === 'status') {
+        setFilters({ status: parsedFilter.value });
+      } else {
+        addSearchTerm(filter);
+      }
+    }
+  };
 
   return (
-    <div className="flex items-center gap-4 mb-4">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search containers..."
-          className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={inputValue}
+            onChange={handleSearch}
+            onKeyDown={handleKeyDown}
+            placeholder="Search by name or add filters (e.g., cpu>80, memory>90)"
+            className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
-      <select
-        value={filters.status}
-        onChange={(e) => setFilters({ status: e.target.value })}
-        className="bg-gray-800 border border-gray-700 rounded-lg text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="all">All Status</option>
-        <option value="running">Running</option>
-        <option value="stopped">Stopped</option>
-      </select>
+
+      <div className="flex flex-wrap gap-2">
+        {presetFilters.map((preset, index) => (
+          <button
+            key={index}
+            onClick={() => handlePresetFilter(preset.filter)}
+            className={`px-3 py-1 text-sm ${activeFilters.some(f => f.raw === preset.filter) ? 'bg-blue-500 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'} rounded-full transition-colors`}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
+      
+      {activeFilters.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {activeFilters.map((filter, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm"
+            >
+              <span>{filter.display}</span>
+              <button
+                onClick={() => removeFilter(filter)}
+                className="hover:text-white transition-colors"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {activeFilters.length > 1 && (
+            <button
+              onClick={clearAllFilters}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
