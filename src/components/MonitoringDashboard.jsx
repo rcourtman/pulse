@@ -62,15 +62,6 @@ const SearchBar = () => {
         <option value="running">Running</option>
         <option value="stopped">Stopped</option>
       </select>
-      <select
-        value={filters.alerts}
-        onChange={(e) => setFilters({ alerts: e.target.value })}
-        className="bg-gray-800 border border-gray-700 rounded-lg text-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="all">All Alerts</option>
-        <option value="alerting">Alerting</option>
-        <option value="normal">Normal</option>
-      </select>
     </div>
   );
 };

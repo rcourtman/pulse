@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 30
+    },
+    "auditLog": "/Users/rcourtman/Documents/pulse/logs/.62b003836c18ac64d074b044c77cd7f67fedc742-audit.json",
+    "files": [
+        {
+            "date": 1739727127807,
+            "name": "/Users/rcourtman/Documents/pulse/logs/error-2025-02-16.log",
+            "hash": "138864ae3cf17ab71175555b1c8dfdee2b0b80886ec0877eaf12ddb0c598424a"
+        }
+    ],
+    "hashType": "sha256"
+}

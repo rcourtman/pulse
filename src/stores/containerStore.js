@@ -12,8 +12,7 @@ const INITIAL_STATE = {
   pinnedServices: new Set(),
   searchTerm: '',
   filters: {
-    status: 'all',
-    alerts: 'all'
+    status: 'all'
   }
 };
 
@@ -70,13 +69,6 @@ export const useContainerStore = create((set, get) => ({
         return false;
       }
 
-      // Alert filter
-      if (filters.alerts !== 'all') {
-        const isAlerting = state.getAlertScore(container) > 0;
-        if (filters.alerts === 'alerting' && !isAlerting) return false;
-        if (filters.alerts === 'normal' && isAlerting) return false;
-      }
-
       return true;
     });
   },
@@ -126,9 +118,9 @@ export const useContainerStore = create((set, get) => ({
 
   // Alert Score Calculation
   getAlertScore: (container) => {
-    const { thresholds, alertConfig } = useSettingsStore.getState();
+    const { thresholds } = useSettingsStore.getState();
 
-    if (!thresholds.enabled || (!alertConfig.includeStoppedContainers && container.status !== 'running')) {
+    if (!thresholds.enabled || container.status !== 'running') {
       return 0;
     }
 

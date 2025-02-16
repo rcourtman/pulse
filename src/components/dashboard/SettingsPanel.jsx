@@ -24,8 +24,6 @@ const SettingsPanel = ({ onClose }) => {
   const {
     thresholds,
     setThresholds,
-    alertConfig,
-    setAlertConfig,
     userPreferences,
     setUserPreferences,
     resetAll
@@ -79,43 +77,9 @@ const SettingsPanel = ({ onClose }) => {
           </div>
         </div>
 
-        {/* Alert Configuration */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-200">Alert Settings</h4>
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={alertConfig.includeStoppedContainers}
-              onChange={(e) => setAlertConfig({ includeStoppedContainers: e.target.checked })}
-              className="rounded border-gray-600 text-blue-500 focus:ring-blue-500"
-            />
-            <span className="text-gray-300 text-sm">Include stopped containers</span>
-          </label>
-        </div>
-
         {/* User Preferences */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-200">Display Settings</h4>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={userPreferences.compactMode}
-                onChange={(e) => setUserPreferences({ compactMode: e.target.checked })}
-                className="rounded border-gray-600 text-blue-500 focus:ring-blue-500"
-              />
-              <span className="text-gray-300 text-sm">Compact mode</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={userPreferences.highContrastMode}
-                onChange={(e) => setUserPreferences({ highContrastMode: e.target.checked })}
-                className="rounded border-gray-600 text-blue-500 focus:ring-blue-500"
-              />
-              <span className="text-gray-300 text-sm">High contrast mode</span>
-            </label>
-          </div>
+          <h4 className="text-sm font-medium text-gray-200">User Preferences</h4>
           <div className="space-y-2">
             <label className="text-gray-300 text-sm block">Refresh Rate</label>
             <select

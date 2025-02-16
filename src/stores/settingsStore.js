@@ -9,14 +9,8 @@ const DEFAULT_THRESHOLDS = {
   enabled: true
 };
 
-const DEFAULT_ALERT_CONFIG = {
-  includeStoppedContainers: false
-};
-
 const DEFAULT_USER_PREFERENCES = {
   refreshRate: 2000,
-  highContrastMode: false,
-  compactMode: false,
   theme: 'dark'
 };
 
@@ -25,7 +19,6 @@ const INITIAL_STATE = {
   isLoading: true,
   showSettings: false,
   thresholds: DEFAULT_THRESHOLDS,
-  alertConfig: DEFAULT_ALERT_CONFIG,
   userPreferences: DEFAULT_USER_PREFERENCES
 };
 
@@ -58,14 +51,6 @@ export const useSettingsStore = create(
       resetThresholds: () => 
         set({ thresholds: DEFAULT_THRESHOLDS }),
 
-      // Alert Configuration
-      setAlertConfig: (newConfig) =>
-        set((state) => ({ 
-          alertConfig: { ...state.alertConfig, ...newConfig }
-        })),
-      resetAlertConfig: () =>
-        set({ alertConfig: DEFAULT_ALERT_CONFIG }),
-
       // User Preferences
       setUserPreferences: (newPreferences) =>
         set((state) => ({ 
@@ -90,7 +75,6 @@ export const useSettingsStore = create(
       partialize: (state) => ({
         credentials: state.credentials,
         thresholds: state.thresholds,
-        alertConfig: state.alertConfig,
         userPreferences: state.userPreferences
       })
     }
