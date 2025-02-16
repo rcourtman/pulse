@@ -45,20 +45,17 @@ const VirtualizedContainerList = () => {
 
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
-    const maxContainers = 10; // Maximum number of containers to show before scrolling
-    const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
-    const totalHeight = Math.max(
-      MIN_LIST_HEIGHT,
-      Math.min(containers.length * rowHeight, maxContainers * rowHeight)
-    );
-    return totalHeight;
+    // Get the parent container's height
+    const viewportHeight = window.innerHeight;
+    // Calculate a reasonable height (80% of viewport)
+    const calculatedHeight = Math.max(MIN_LIST_HEIGHT, viewportHeight * 0.8);
+    return calculatedHeight;
   };
 
   if (containers.length === 0 && !loading) {
     return (
       <div 
-        className="text-gray-400 text-center py-8"
-        style={{ minHeight: MIN_LIST_HEIGHT }}
+        className="text-gray-400 text-center py-8 h-full"
       >
         No containers found
       </div>
@@ -69,7 +66,7 @@ const VirtualizedContainerList = () => {
   const listHeight = calculateListHeight();
 
   return (
-    <div style={{ height: listHeight }} className="relative">
+    <div style={{ height: '100%' }} className="relative">
       <List
         height={listHeight}
         itemCount={containers.length}

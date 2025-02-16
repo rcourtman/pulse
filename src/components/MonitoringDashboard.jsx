@@ -97,7 +97,7 @@ const MonitoringDashboard = ({ credentials }) => {
   const [showThresholds, setShowThresholds] = useState(true);
 
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-900 p-6 flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-white">All Systems</h1>
@@ -168,7 +168,7 @@ const MonitoringDashboard = ({ credentials }) => {
 
       {!initialLoad && (
         <>
-          <div className="space-y-0.5 rounded-lg border border-gray-800 bg-gray-900/50 p-0.5">
+          <div className="flex-1 flex flex-col rounded-lg border border-gray-800 bg-gray-900/50 p-0.5 min-h-0 h-full">
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-2 px-3 py-1.5 text-sm font-medium text-gray-400">
               <SearchHeader />
               <div>
@@ -199,7 +199,7 @@ const MonitoringDashboard = ({ credentials }) => {
             
             <ThresholdsRow showThresholds={showThresholds} />
 
-            <div className="min-h-[200px]">
+            <div className="flex-1 overflow-auto min-h-0">
               <VirtualizedContainerList />
             </div>
           </div>
