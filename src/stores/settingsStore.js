@@ -6,7 +6,8 @@ const DEFAULT_THRESHOLDS = {
   memory: 80,
   disk: 80,
   network: 1024,
-  enabled: true
+  enabled: true,
+  wasManuallyDisabled: false
 };
 
 const DEFAULT_USER_PREFERENCES = {
@@ -50,6 +51,12 @@ export const useSettingsStore = create(
           const updatedThresholds = typeof newThresholds === 'function' ?
             newThresholds(state.thresholds) :
             { ...state.thresholds, ...newThresholds };
+
+          // If enabled is being explicitly set, mark it as manual
+          if ('enabled' in newThresholds) {
+            updatedThresholds.wasManuallyDisabled = !newThresholds.enabled;
+          }
+
           return { thresholds: updatedThresholds };
         }),
       resetThresholds: () => 

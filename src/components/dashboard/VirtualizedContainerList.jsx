@@ -4,8 +4,8 @@ import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
 
-const CONTAINER_ROW_HEIGHT = 64; // Height of each container row in pixels
-const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3; // Minimum height to prevent layout shifts
+const CONTAINER_ROW_HEIGHT = 48; // Reduced from 64 to 48 for more compact rows
+const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
 
 const VirtualizedContainerList = () => {
   const {

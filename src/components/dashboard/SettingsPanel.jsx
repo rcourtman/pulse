@@ -2,36 +2,12 @@ import React from 'react';
 import { Button } from "../ui/button";
 import { useSettingsStore } from '../../stores/settingsStore';
 
-const ThresholdSlider = ({ label, value, onChange, min = 0, max = 100, step = 1 }) => (
-  <div className="space-y-2">
-    <label className="text-gray-300 text-sm flex justify-between">
-      <span>{label}</span>
-      <span>{value}{label === 'Network' ? ' KB/s' : '%'}</span>
-    </label>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full accent-blue-500"
-    />
-  </div>
-);
-
 const SettingsPanel = ({ onClose }) => {
   const {
-    thresholds,
-    setThresholds,
     userPreferences,
     setUserPreferences,
     resetAll
   } = useSettingsStore();
-
-  const handleThresholdChange = (key, value) => {
-    setThresholds({ [key]: value });
-  };
 
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-gray-800 p-6 shadow-lg border-l border-gray-700 overflow-y-auto z-50">
@@ -48,35 +24,6 @@ const SettingsPanel = ({ onClose }) => {
       </div>
 
       <div className="space-y-6">
-        {/* Threshold Values */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-200">Threshold Values</h4>
-          <div className="space-y-4">
-            <ThresholdSlider
-              label="CPU"
-              value={thresholds.cpu}
-              onChange={(value) => handleThresholdChange('cpu', value)}
-            />
-            <ThresholdSlider
-              label="Memory"
-              value={thresholds.memory}
-              onChange={(value) => handleThresholdChange('memory', value)}
-            />
-            <ThresholdSlider
-              label="Disk"
-              value={thresholds.disk}
-              onChange={(value) => handleThresholdChange('disk', value)}
-            />
-            <ThresholdSlider
-              label="Network"
-              value={thresholds.network}
-              onChange={(value) => handleThresholdChange('network', value)}
-              max={5000}
-              step={100}
-            />
-          </div>
-        </div>
-
         {/* User Preferences */}
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-gray-200">User Preferences</h4>
@@ -99,11 +46,12 @@ const SettingsPanel = ({ onClose }) => {
       {/* Reset Button */}
       <div className="pt-4 mt-6 border-t border-gray-700">
         <Button
-          variant="ghost"
+          variant="destructive"
+          size="sm"
           onClick={resetAll}
-          className="w-full text-white hover:bg-gray-700"
+          className="w-full"
         >
-          Reset to Defaults
+          Reset All Settings
         </Button>
       </div>
     </div>

@@ -1,43 +1,38 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Settings2, Pin, Gauge, RotateCcw } from "lucide-react";
+import { Settings2, Pin, Gauge, RotateCcw, ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { useContainerStore } from '../stores/containerStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import VirtualizedContainerList from './dashboard/VirtualizedContainerList';
 import SettingsPanel from './dashboard/SettingsPanel';
 import useContainerData from './useContainerData';
+import HeaderThresholdSlider from './dashboard/HeaderThresholdSlider';
 
-const SortableHeader = ({ field, children, className = "" }) => {
+const SortableHeader = ({ field, label, className = "" }) => {
   const { sortConfig, setSortConfig } = useContainerStore();
   const isActive = sortConfig.field === field;
 
-  const handleSort = () => {
-    if (field === 'alert') return;
+  const handleSort = (e) => {
+    e.stopPropagation();
     setSortConfig({ field });
   };
 
   return (
-    <button
-      onClick={handleSort}
-      className={`flex items-center gap-2 hover:text-white transition-colors ${isActive ? 'text-blue-400' : 'text-gray-400'} ${className}`}
-    >
-      {children}
-      {isActive && (
-        <svg
-          className="h-4 w-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      )}
-    </button>
+    <div className={`flex items-center gap-2 ${className}`}>
+      <button
+        onClick={handleSort}
+        className={`flex items-center gap-1 cursor-pointer hover:text-white transition-colors ${isActive ? 'text-blue-400' : 'text-gray-400'}`}
+      >
+        <span>{label}</span>
+        <div className="flex items-center">
+          {isActive ? (
+            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${sortConfig.direction === 'desc' ? 'rotate-0' : 'rotate-180'}`} />
+          ) : (
+            <ArrowUpDown className="h-3 w-3 opacity-50" />
+          )}
+        </div>
+      </button>
+    </div>
   );
 };
 
@@ -67,6 +62,24 @@ const SearchHeader = () => {
   );
 };
 
+const ThresholdsRow = ({ showThresholds }) => {
+  const { thresholds } = useSettingsStore();
+  if (!thresholds.enabled) return null;
+
+  return (
+    <div className={`grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-3 py-2 bg-gray-800/50 border-y border-gray-700 overflow-hidden transition-all duration-300 ease-in-out ${showThresholds ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0 py-0 border-y-0'}`}>
+      <div className="flex items-center">
+        <span className="text-xs font-medium text-gray-400">Resource Thresholds</span>
+      </div>
+      <HeaderThresholdSlider field="cpu" />
+      <HeaderThresholdSlider field="memory" />
+      <HeaderThresholdSlider field="disk" />
+      <HeaderThresholdSlider field="network" />
+      <div /> {/* Empty space for actions column */}
+    </div>
+  );
+};
+
 const MonitoringDashboard = ({ credentials }) => {
   const { initialLoad } = useContainerData(credentials);
   const { 
@@ -81,6 +94,8 @@ const MonitoringDashboard = ({ credentials }) => {
     setShowSettings 
   } = useSettingsStore();
 
+  const [showThresholds, setShowThresholds] = useState(true);
+
   return (
     <div className="min-h-screen bg-gray-900 p-6">
       <div className="mb-6 flex items-center justify-between">
@@ -89,6 +104,20 @@ const MonitoringDashboard = ({ credentials }) => {
           <p className="text-gray-400">Updated in real time.</p>
         </div>
         <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowThresholds(!showThresholds)}
+            className={`relative group bg-gray-800 hover:bg-gray-700
+              ${thresholds.enabled ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
+              transition-all duration-300 ease-out`}
+            title={`${showThresholds ? 'Hide' : 'Show'} Thresholds`}
+          >
+            {showThresholds ? 
+              <ChevronUp className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> :
+              <ChevronDown className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+            }
+          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -139,13 +168,21 @@ const MonitoringDashboard = ({ credentials }) => {
 
       {!initialLoad && (
         <>
-          <div className="space-y-1 rounded-lg border border-gray-800 bg-gray-900/50 p-1">
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-4 py-2 text-sm font-medium text-gray-400">
+          <div className="space-y-0.5 rounded-lg border border-gray-800 bg-gray-900/50 p-0.5">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-2 px-3 py-1.5 text-sm font-medium text-gray-400">
               <SearchHeader />
-              <SortableHeader field="cpu">CPU</SortableHeader>
-              <SortableHeader field="memory">Memory</SortableHeader>
-              <SortableHeader field="disk">Disk</SortableHeader>
-              <SortableHeader field="network">Network</SortableHeader>
+              <div>
+                <SortableHeader field="cpu" label="CPU" />
+              </div>
+              <div>
+                <SortableHeader field="memory" label="Memory" />
+              </div>
+              <div>
+                <SortableHeader field="disk" label="Disk" />
+              </div>
+              <div>
+                <SortableHeader field="network" label="Network" />
+              </div>
               <div className="w-8 flex justify-center">
                 {pinnedServices.size > 0 && (
                   <Button
@@ -160,6 +197,8 @@ const MonitoringDashboard = ({ credentials }) => {
               </div>
             </div>
             
+            <ThresholdsRow showThresholds={showThresholds} />
+
             <div className="min-h-[200px]">
               <VirtualizedContainerList />
             </div>

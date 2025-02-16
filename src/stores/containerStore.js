@@ -39,15 +39,31 @@ export const useContainerStore = create((set, get) => ({
   },
 
   // Pinned Services
-  togglePinned: (containerId) => set((state) => {
-    const newPinned = new Set(state.pinnedServices);
-    if (newPinned.has(containerId)) {
-      newPinned.delete(containerId);
-    } else {
-      newPinned.add(containerId);
-    }
-    return { pinnedServices: newPinned };
-  }),
+  togglePinned: (containerId) => {
+    const settingsStore = useSettingsStore.getState();
+    const { thresholds, setThresholds } = settingsStore;
+    
+    set((state) => {
+      const newPinned = new Set(state.pinnedServices);
+      const hadPins = newPinned.size > 0;
+      
+      if (newPinned.has(containerId)) {
+        newPinned.delete(containerId);
+        // If this was the last pin and thresholds weren't manually disabled
+        if (newPinned.size === 0 && !thresholds.wasManuallyDisabled) {
+          setThresholds({ enabled: true });
+        }
+      } else {
+        newPinned.add(containerId);
+        // If this is the first pin and thresholds are enabled
+        if (!hadPins && thresholds.enabled) {
+          setThresholds({ enabled: false, wasManuallyDisabled: false });
+        }
+      }
+      
+      return { pinnedServices: newPinned };
+    });
+  },
 
   clearPinned: () => set({ pinnedServices: new Set() }),
 
