@@ -91,13 +91,10 @@ const MonitoringDashboard = ({ credentials }) => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setThresholds(prev => ({ ...prev, enabled: !prev.enabled }))}
+            onClick={() => setThresholds({ enabled: !thresholds.enabled })}
             className={`relative group bg-gray-800 hover:bg-gray-700
               ${thresholds.enabled ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
-              transition-all duration-300 ease-out
-              ${pinnedServices.size > 0 ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-            disabled={pinnedServices.size > 0}
+              transition-all duration-300 ease-out`}
             title={`Alert Thresholds ${thresholds.enabled ? 'On' : 'Off'}`}
           >
             <Gauge className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />

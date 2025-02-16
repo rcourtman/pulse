@@ -120,7 +120,7 @@ export const useContainerStore = create((set, get) => ({
   getAlertScore: (container) => {
     const { thresholds } = useSettingsStore.getState();
 
-    if (!thresholds.enabled || container.status !== 'running') {
+    if (!thresholds?.enabled || container.status !== 'running') {
       return 0;
     }
 

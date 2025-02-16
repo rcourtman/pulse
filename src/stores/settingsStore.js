@@ -45,9 +45,13 @@ export const useSettingsStore = create(
 
       // Thresholds
       setThresholds: (newThresholds) => 
-        set((state) => ({ 
-          thresholds: { ...state.thresholds, ...newThresholds }
-        })),
+        set((state) => {
+          // If newThresholds is a function, execute it with current state
+          const updatedThresholds = typeof newThresholds === 'function' ?
+            newThresholds(state.thresholds) :
+            { ...state.thresholds, ...newThresholds };
+          return { thresholds: updatedThresholds };
+        }),
       resetThresholds: () => 
         set({ thresholds: DEFAULT_THRESHOLDS }),
 
