@@ -41,6 +41,38 @@ const SortableHeader = ({ field, children, className = "" }) => {
   );
 };
 
+const parseFilter = (input) => {
+  const metricMatch = input.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
+  const statusMatch = input.match(/^status:(running|stopped)$/);
+
+  if (metricMatch) {
+    const [_, metric, operator, value] = metricMatch;
+    return {
+      type: 'metric',
+      metric,
+      operator,
+      value: parseFloat(value),
+      display: `${metric}${operator}${value}${metric === 'network' ? '' : '%'}`,
+      raw: input
+    };
+  } else if (statusMatch) {
+    const [_, status] = statusMatch;
+    return {
+      type: 'status',
+      value: status,
+      display: `status:${status}`,
+      raw: input
+    };
+  }
+  
+  return {
+    type: 'search',
+    value: input,
+    display: input,
+    raw: input
+  };
+};
+
 const SearchBar = () => {
   const { searchTerms, addSearchTerm, removeSearchTerm, clearSearchTerms, filters, setFilters, containers } = useContainerStore();
   const [inputValue, setInputValue] = useState('');
@@ -122,37 +154,7 @@ const SearchBar = () => {
       .slice(0, 5);
   };
 
-  const parseFilter = (input) => {
-    const metricMatch = input.match(/^(cpu|memory|disk|network)([<>])(\d+)$/);
-    const statusMatch = input.match(/^status:(running|stopped)$/);
 
-    if (metricMatch) {
-      const [_, metric, operator, value] = metricMatch;
-      return {
-        type: 'metric',
-        metric,
-        operator,
-        value: parseFloat(value),
-        display: `${metric}${operator}${value}${metric === 'network' ? '' : '%'}`,
-        raw: input
-      };
-    } else if (statusMatch) {
-      const [_, status] = statusMatch;
-      return {
-        type: 'status',
-        value: status,
-        display: `status:${status}`,
-        raw: input
-      };
-    }
-    
-    return {
-      type: 'search',
-      value: input,
-      display: input,
-      raw: input
-    };
-  };
 
   const handleSearch = (e) => {
     setInputValue(e.target.value);
