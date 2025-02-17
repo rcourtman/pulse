@@ -103,19 +103,27 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
 
       {/* Network Usage */}
       <ContainerRowBase.MetricCell>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs ${netInColor}`}>↓ {formatNetworkRate(container.networkIn)}</span>
-          <span className={`text-xs ${netOutColor}`}>↑ {formatNetworkRate(container.networkOut)}</span>
-        </div>
-        <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
-          <div
-            className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(container.networkIn, 100)}%` }}
-          />
-          <div
-            className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(container.networkOut, 100)}%`, position: 'absolute', top: 0 }}
-          />
+        <div className="flex flex-col gap-1 w-full">
+          {/* Download */}
+          <div className="flex items-center gap-2">
+            <span className={`text-xs w-20 ${netInColor}`}>↓ {formatNetworkRate(container.networkIn)}</span>
+            <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+              <div
+                className="bg-blue-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(container.networkIn * 10, 100)}%` }}
+              />
+            </div>
+          </div>
+          {/* Upload */}
+          <div className="flex items-center gap-2">
+            <span className={`text-xs w-20 ${netOutColor}`}>↑ {formatNetworkRate(container.networkOut)}</span>
+            <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+              <div
+                className="bg-purple-500 h-full rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(container.networkOut * 10, 100)}%` }}
+              />
+            </div>
+          </div>
         </div>
       </ContainerRowBase.MetricCell>
 
