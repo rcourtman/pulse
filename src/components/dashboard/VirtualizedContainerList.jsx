@@ -77,17 +77,7 @@ const VirtualizedContainerList = () => {
       {/* Header section with integrated filters and search */}
       <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 min-w-[120px]">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-              <input
-                type="text"
-                onChange={handleSearch}
-                placeholder="Search..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-2 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
+          <HeaderCell metric="name" label="Name" />
           <HeaderCell metric="cpu" label="CPU" />
           <HeaderCell metric="memory" label="Memory" />
           <HeaderCell metric="disk" label="Disk" />
