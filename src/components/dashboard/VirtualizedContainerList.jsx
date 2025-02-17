@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
 import ThresholdFilterBar from './ThresholdFilterBar';
 
-const CONTAINER_ROW_HEIGHT = 48; // Reduced from 64 to 48 for more compact rows
+const CONTAINER_ROW_HEIGHT = 48;
 const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
 
 const VirtualizedContainerList = () => {
@@ -23,7 +23,6 @@ const VirtualizedContainerList = () => {
 
   // Get filtered and sorted containers
   const containers = getSortedContainers(getFilteredContainers()).filter(container => {
-    // If there are pinned services, only show pinned containers
     if (pinnedServices.size > 0) {
       return pinnedServices.has(container.id);
     }
@@ -52,41 +51,47 @@ const VirtualizedContainerList = () => {
 
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
-    // Use a fixed height instead of viewport-based calculation
-    const totalHeight = 600; // Fixed total height for the component
-    const filterBarHeight = 48; // Height of the ThresholdFilterBar
-    return totalHeight - filterBarHeight;
+    const totalHeight = 600;
+    const headerHeight = 48; // Height for the table header
+    return totalHeight - headerHeight;
   };
 
   const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
   const listHeight = calculateListHeight();
 
   return (
-    <div style={{ height: '600px' }} className="relative">
-      <ThresholdFilterBar />
-      {containers.length === 0 && !loading ? (
-        <div className="text-gray-400 text-center py-8">
-          No containers found
-        </div>
-      ) : (
-        <List
-          height={listHeight}
-          itemCount={containers.length}
-          itemSize={rowHeight}
-          width="100%"
-          className="container-list"
-        >
-          {Row}
-        </List>
-      )}
+    <div className="flex flex-col h-[600px] bg-gray-900/50 rounded-xl overflow-hidden border border-gray-800/50">
+      {/* Integrated header section */}
+      <div className="flex-none">
+        <ThresholdFilterBar />
+      </div>
       
-      {/* Overlay loading indicator for subsequent updates */}
-      {loading && containers.length > 0 && (
-        <div className="absolute top-2 right-2 flex items-center gap-2 px-3 py-1.5 bg-gray-800/80 rounded-full text-sm text-gray-300">
-          <div className="animate-spin h-3 w-3 border border-gray-400 border-t-white rounded-full" />
-          <span>Updating...</span>
-        </div>
-      )}
+      {/* Container list section */}
+      <div className="flex-1 relative">
+        {containers.length === 0 && !loading ? (
+          <div className="text-gray-400 text-center py-8">
+            No containers found
+          </div>
+        ) : (
+          <List
+            height={listHeight}
+            itemCount={containers.length}
+            itemSize={rowHeight}
+            width="100%"
+            className="container-list"
+          >
+            {Row}
+          </List>
+        )}
+        
+        {/* Overlay loading indicator for subsequent updates */}
+        {loading && containers.length > 0 && (
+          <div className="absolute top-2 right-2 flex items-center gap-2 px-3 py-1.5 bg-gray-800/80 rounded-full text-sm text-gray-300">
+            <div className="animate-spin h-3 w-3 border border-gray-400 border-t-white rounded-full" />
+            <span>Updating...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
