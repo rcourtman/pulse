@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
 
 import HeaderCell from './HeaderCell';
-import { Search, X } from 'lucide-react';
+import { Search, X, FilterX } from 'lucide-react';
 
 const CONTAINER_ROW_HEIGHT = 48;
 const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
@@ -20,7 +20,9 @@ const VirtualizedContainerList = () => {
     loading,
     searchTerms,
     addSearchTerm,
-    clearSearchTerms
+    clearSearchTerms,
+    clearCustomThresholds,
+    customThresholds
   } = useContainerStore();
 
   const { thresholds, userPreferences } = useSettingsStore();
@@ -30,6 +32,12 @@ const VirtualizedContainerList = () => {
 
   // Get filtered and sorted containers
   const containers = getSortedContainers(getFilteredContainers()).filter(container => {
+    // First apply search term filter
+    if (searchTerms.length > 0) {
+      const containerName = container.name.toLowerCase();
+      return searchTerms.some(term => containerName.includes(term.toLowerCase()));
+    }
+    // Then apply pinned filter
     if (pinnedServices.size > 0) {
       return pinnedServices.has(container.id);
     }
@@ -72,9 +80,9 @@ const VirtualizedContainerList = () => {
 
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
-      clearSearchTerms();
       if (searchInput) {
         addSearchTerm(searchInput);
+        setSearchInput('');
       }
     }
   };
@@ -89,27 +97,60 @@ const VirtualizedContainerList = () => {
       {/* Header section with integrated filters and search */}
       <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
-          <div className="flex items-center gap-2">
-            <Search className="text-gray-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={handleSearchInputChange}
-              onKeyPress={handleSearchKeyPress}
-              placeholder="Search by name"
-              className="bg-gray-700 text-white rounded-md px-2 py-1 focus:outline-none"
-            />
-            {searchInput && (
-              <button onClick={clearSearch} className="text-gray-400 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Search className="text-gray-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={handleSearchInputChange}
+                onKeyPress={handleSearchKeyPress}
+                placeholder="Search by name"
+                className="bg-gray-700 text-white rounded-md px-2 py-1 focus:outline-none flex-1"
+              />
+              {searchInput && (
+                <button onClick={() => setSearchInput('')} className="text-gray-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            {searchTerms.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {searchTerms.map((term, index) => (
+                  <div key={index} className="flex items-center gap-1 bg-gray-700/50 px-2 py-0.5 rounded text-sm text-gray-300">
+                    <span>{term}</span>
+                    <button
+                      onClick={() => removeSearchTerm(term)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={clearSearch}
+                  className="text-xs text-gray-400 hover:text-white"
+                >
+                  Clear all
+                </button>
+              </div>
             )}
           </div>
           <HeaderCell metric="cpu" label="CPU" />
           <HeaderCell metric="memory" label="Memory" />
           <HeaderCell metric="disk" label="Disk" />
           <HeaderCell metric="network" label="Network" unit="MB/s" />
-          <div></div>
+          <div className="flex items-center justify-end">
+            {Object.keys(customThresholds).length > 0 && (
+              <button
+                onClick={clearCustomThresholds}
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                title="Reset all thresholds"
+              >
+                <FilterX className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       
