@@ -32,17 +32,17 @@ const ThresholdFilterBar = () => {
   const hasActiveFilters = Object.values(customThresholds).some(threshold => threshold !== null);
 
   return (
-    <div className="bg-gray-800/60 rounded-xl mb-4 backdrop-blur-md border border-gray-700/50 shadow-lg shadow-black/10 transition-all duration-300 ease-in-out overflow-hidden">
+    <div className="bg-gray-800/80 rounded-t-xl backdrop-blur-md border-x border-t border-gray-700/50 shadow-lg shadow-black/10 transition-all duration-300 ease-in-out overflow-hidden">
       <div 
-        className={`px-4 flex justify-between items-center cursor-pointer hover:bg-gray-700/20 transition-colors ${isExpanded ? 'py-3.5' : 'py-2'}`}
+        className={`px-4 flex justify-between items-center cursor-pointer hover:bg-gray-700/30 transition-colors ${isExpanded ? 'py-2.5' : 'py-2'}`}
         onClick={() => setIsExpanded(!isExpanded)}
         role="button"
         tabIndex={0}
       >
         <div className="flex items-center gap-2">
-          <h3 className={`text-sm font-medium text-gray-200 ${!isExpanded && 'text-xs'}`}>Threshold Filters</h3>
+          <h3 className={`text-sm font-medium text-gray-300 ${!isExpanded && 'text-xs'}`}>Threshold Filters</h3>
           {hasActiveFilters && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-300 rounded-md">
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-500/30 text-blue-200 rounded-md">
               Active
             </span>
           )}
@@ -56,14 +56,14 @@ const ThresholdFilterBar = () => {
       <div
         className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
       >
-        <div className="px-6 pb-6 pt-2">
-          <div className="flex justify-between items-start gap-6">
-        <div className="flex flex-wrap gap-8 flex-1">
+        <div className="px-4 pb-4 pt-1">
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex flex-wrap gap-4 flex-1">
           {Object.entries(METRICS).map(([metric, config]) => (
-            <div key={metric} className="flex flex-col gap-2 min-w-[160px]">
+            <div key={metric} className="flex flex-col gap-1.5 min-w-[140px]">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-300">{config.name}</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${customThresholds[metric] 
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${customThresholds[metric] 
                   ? 'bg-blue-500/20 text-blue-300' 
                   : 'bg-gray-700/50 text-gray-400'}`}>
                   {customThresholds[metric] ? `>${customThresholds[metric].value}${config.unit}` : 'Off'}
@@ -82,17 +82,19 @@ const ThresholdFilterBar = () => {
                   step={metric === 'network' ? '1' : '5'}
                   value={customThresholds[metric]?.value || 0}
                   onChange={(e) => handleSliderChange(metric, parseInt(e.target.value, 10))}
-                  className="w-full h-1.5 bg-gradient-to-r from-blue-500/20 to-blue-500 rounded-lg appearance-none cursor-pointer
+                  className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer
                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
                     [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500
                     [&::-webkit-slider-thumb]:hover:bg-blue-400 [&::-webkit-slider-thumb]:ring-2
-                    [&::-webkit-slider-thumb]:ring-blue-500/50 [&::-webkit-slider-thumb]:transition-all
-                    [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-black/20
+                    [&::-webkit-slider-thumb]:ring-blue-500/20 [&::-webkit-slider-thumb]:transition-all
+                    [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:shadow-black/10
                     [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
                     [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500
                     [&::-moz-range-thumb]:hover:bg-blue-400 [&::-moz-range-thumb]:ring-2
-                    [&::-moz-range-thumb]:ring-blue-500/50 [&::-moz-range-thumb]:transition-all
-                    [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:shadow-black/20"
+                    [&::-moz-range-thumb]:ring-blue-500/20 [&::-moz-range-thumb]:transition-all
+                    [&::-moz-range-thumb]:shadow-sm [&::-moz-range-thumb]:shadow-black/10
+                    [&::-webkit-slider-runnable-track]:bg-blue-500/20 [&::-webkit-slider-runnable-track]:rounded-lg
+                    [&::-moz-range-track]:bg-blue-500/20 [&::-moz-range-track]:rounded-lg"
                 />
                 <div className="mt-1 flex justify-between px-0.5">
                   <span className="text-[10px] text-gray-500">0{config.unit}</span>
