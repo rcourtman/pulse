@@ -98,18 +98,18 @@ const VirtualizedContainerList = () => {
       <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Search className="text-gray-400" />
+            <div className="relative flex items-center gap-2">
+              <Search className="absolute left-2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={handleSearchInputChange}
                 onKeyPress={handleSearchKeyPress}
                 placeholder="Search by name"
-                className="bg-gray-700 text-white rounded-md px-2 py-1 focus:outline-none flex-1"
+                className="bg-gray-700 text-white rounded-md pl-8 pr-8 py-1 focus:outline-none w-full"
               />
               {searchInput && (
-                <button onClick={() => setSearchInput('')} className="text-gray-400 hover:text-white">
+                <button onClick={() => setSearchInput('')} className="absolute right-2 text-gray-400 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
               )}
