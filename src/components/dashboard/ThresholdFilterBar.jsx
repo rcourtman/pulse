@@ -1,5 +1,6 @@
 import React from 'react';
 import { useContainerStore } from '../../stores/containerStore';
+import { Button } from '../ui/button';
 
 const METRICS = {
   cpu: { name: 'CPU', unit: '%' },
@@ -80,12 +81,14 @@ const ThresholdFilterBar = () => {
           ))}
         </div>
         {hasActiveFilters && (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleClearFilters}
-            className="px-2 py-1 text-xs text-gray-400 hover:text-gray-300 bg-gray-700/50 hover:bg-gray-700 rounded transition-colors"
+            className="text-white bg-gray-500 hover:bg-gray-600"
           >
-            Clear All
-          </button>
+            Clear Filters
+          </Button>
         )}
       </div>
     </div>
