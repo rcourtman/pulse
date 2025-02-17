@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
 
 import HeaderCell from './HeaderCell';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 const CONTAINER_ROW_HEIGHT = 48;
 const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
@@ -25,6 +25,8 @@ const VirtualizedContainerList = () => {
 
   const { thresholds, userPreferences } = useSettingsStore();
   const { compactMode } = userPreferences;
+
+  const [searchInput, setSearchInput] = useState('');
 
   // Get filtered and sorted containers
   const containers = getSortedContainers(getFilteredContainers()).filter(container => {
@@ -64,12 +66,22 @@ const VirtualizedContainerList = () => {
   const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
   const listHeight = calculateListHeight();
 
-  const handleSearch = (e) => {
-    const value = e.target.value;
-    clearSearchTerms();
-    if (value) {
-      addSearchTerm(value);
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      clearSearchTerms();
+      if (searchInput) {
+        addSearchTerm(searchInput);
+      }
     }
+  };
+
+  const clearSearch = () => {
+    setSearchInput('');
+    clearSearchTerms();
   };
 
   return (
@@ -77,7 +89,22 @@ const VirtualizedContainerList = () => {
       {/* Header section with integrated filters and search */}
       <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
-          <HeaderCell metric="name" label="Name" />
+          <div className="flex items-center gap-2">
+            <Search className="text-gray-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={handleSearchInputChange}
+              onKeyPress={handleSearchKeyPress}
+              placeholder="Search by name"
+              className="bg-gray-700 text-white rounded-md px-2 py-1 focus:outline-none"
+            />
+            {searchInput && (
+              <button onClick={clearSearch} className="text-gray-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
           <HeaderCell metric="cpu" label="CPU" />
           <HeaderCell metric="memory" label="Memory" />
           <HeaderCell metric="disk" label="Disk" />
