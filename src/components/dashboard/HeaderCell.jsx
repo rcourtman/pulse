@@ -21,9 +21,9 @@ const HeaderCell = ({ metric, label, unit = '%' }) => {
 
   return (
     <div className={`flex flex-col gap-1 min-w-[120px] transition-opacity duration-200 ${!customThresholds[metric] ? 'opacity-75 hover:opacity-90' : ''}`}>
-      <div className={`flex items-center justify-between cursor-pointer transition-all duration-200 ${customThresholds[metric] ? 'bg-blue-500/15 px-2 py-1 -mx-2 rounded-lg shadow-sm shadow-blue-500/10' : 'hover:bg-gray-700/50 px-2 py-1 -mx-2 rounded-lg'}`} onClick={handleSort}>
+      <div className={`flex items-center justify-between cursor-pointer transition-all duration-200 px-2 py-1 -mx-2 rounded-lg ${!customThresholds[metric] ? 'hover:bg-gray-700/50' : ''}`} onClick={handleSort}>
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${customThresholds[metric] ? 'text-blue-100' : 'text-gray-300'}`}>{label}</span>
+          <span className={`text-sm ${customThresholds[metric] ? 'text-white font-semibold' : 'text-gray-300 font-medium'}`}>{label}</span>
           {sortConfig.field === metric && (
             <span className="text-xs text-blue-300">
               {sortConfig.direction === 'asc' ? '▲' : '▼'}
@@ -31,11 +31,11 @@ const HeaderCell = ({ metric, label, unit = '%' }) => {
           )}
         </div>
         {customThresholds[metric] ? (
-          <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full shadow-sm shadow-green-500/10 transition-colors duration-200 hover:bg-green-500/30">
+          <span className="text-xs text-white font-medium px-2 py-0.5 rounded-full transition-colors duration-200">
             {`>${customThresholds[metric].value}${unit}`}
           </span>
         ) : (
-          <span className="text-xs bg-gray-600/30 text-gray-400 px-2 py-0.5 rounded-full transition-colors duration-200 hover:bg-gray-600/40">Off</span>
+          <span className="text-xs text-gray-400 px-2 py-0.5 rounded-full transition-colors duration-200">Off</span>
         )}
       </div>
       <div className="relative">
