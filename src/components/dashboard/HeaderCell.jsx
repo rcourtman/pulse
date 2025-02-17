@@ -22,20 +22,21 @@ const HeaderCell = ({ metric, label, unit = '%' }) => {
   return (
     <div className="flex flex-col gap-1 min-w-[120px]">
       <div className="flex items-center justify-between cursor-pointer" onClick={handleSort}>
-        <span className="text-sm font-medium text-gray-300">{label}</span>
-        <span className={`text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1 ${sortConfig.field === metric 
-          ? 'bg-blue-500/20 text-blue-300' 
-          : 'bg-gray-700/50 text-gray-400'}`}>
-          {sortConfig.field === metric ? (sortConfig.direction === 'asc' ? '▲' : '▼') : (
-            customThresholds[metric] ? (
-              <span className="bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">
-                {`>${customThresholds[metric].value}${unit}`}
-              </span>
-            ) : (
-              <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">Off</span>
-            )
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-300">{label}</span>
+          {sortConfig.field === metric && (
+            <span className="text-xs text-blue-300">
+              {sortConfig.direction === 'asc' ? '▲' : '▼'}
+            </span>
           )}
-        </span>
+        </div>
+        {customThresholds[metric] ? (
+          <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">
+            {`>${customThresholds[metric].value}${unit}`}
+          </span>
+        ) : (
+          <span className="text-xs bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full">Off</span>
+        )}
       </div>
       <div className="relative">
         <div className="absolute w-full h-1 -mt-[2px] flex justify-between px-[2px]">
