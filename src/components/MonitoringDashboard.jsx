@@ -64,19 +64,29 @@ const SearchHeader = () => {
 
 const ThresholdsRow = ({ showThresholds }) => {
   const { thresholds } = useSettingsStore();
+  const [isHovered, setIsHovered] = useState(false);
   if (!thresholds.enabled) return null;
 
   return (
-    <div className={`grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-3 py-2 bg-gray-800/50 border-y border-gray-700 overflow-hidden transition-all duration-300 ease-in-out ${showThresholds ? 'max-h-[80px] opacity-100' : 'max-h-0 opacity-0 py-0 border-y-0'}`}>
-      <div className="flex items-center">
-        <span className="text-xs font-medium text-gray-400">Resource Thresholds</span>
+    <>
+      {showThresholds && isHovered && (
+        <div className="fixed inset-0 bg-black/30 pointer-events-none transition-opacity duration-300 ease-in-out z-10" />
+      )}
+      <div
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`relative grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-3 py-2 bg-gray-800/50 border-y border-gray-700 overflow-hidden transition-all duration-300 ease-in-out z-20 ${showThresholds ? 'max-h-[80px] opacity-60 hover:opacity-100' : 'max-h-0 opacity-0 py-0 border-y-0'}`}
+      >
+        <div className="flex items-center">
+          <span className="text-xs font-medium text-gray-400">Resource Thresholds</span>
+        </div>
+        <HeaderThresholdSlider field="cpu" />
+        <HeaderThresholdSlider field="memory" />
+        <HeaderThresholdSlider field="disk" />
+        <HeaderThresholdSlider field="network" />
+        <div /> {/* Empty space for actions column */}
       </div>
-      <HeaderThresholdSlider field="cpu" />
-      <HeaderThresholdSlider field="memory" />
-      <HeaderThresholdSlider field="disk" />
-      <HeaderThresholdSlider field="network" />
-      <div /> {/* Empty space for actions column */}
-    </div>
+    </>
   );
 };
 
