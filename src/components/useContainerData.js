@@ -82,9 +82,9 @@ const useContainerData = (credentials) => {
           // Calculate network rates
           const prevStats = previousStats.current[container.vmid] || {};
           const networkIn = prevStats.netin ? 
-            Math.max(0, (container.netin - prevStats.netin) / refreshRate * 1000 / 1024) : 0;
+            Math.max(0, (container.netin - prevStats.netin) / refreshRate * 1000 / (1024 * 1024)) : 0;
           const networkOut = prevStats.netout ? 
-            Math.max(0, (container.netout - prevStats.netout) / refreshRate * 1000 / 1024) : 0;
+            Math.max(0, (container.netout - prevStats.netout) / refreshRate * 1000 / (1024 * 1024)) : 0;
 
           // Update previous stats
           previousStats.current[container.vmid] = {

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -20,6 +20,7 @@ const VirtualizedContainerList = () => {
     loading,
     searchTerms,
     addSearchTerm,
+    removeSearchTerm,
     clearSearchTerms,
     clearCustomThresholds,
     customThresholds
@@ -30,17 +31,35 @@ const VirtualizedContainerList = () => {
 
   const [searchInput, setSearchInput] = useState('');
 
-  // Get filtered and sorted containers
-  const containers = getSortedContainers(getFilteredContainers()).filter(container => {
-    // First apply search term filter
-    if (searchTerms.length > 0) {
-      const containerName = container.name.toLowerCase();
-      return searchTerms.some(term => containerName.includes(term.toLowerCase()));
+  // Handler for the search input key events
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter' && searchInput) {
+      addSearchTerm(searchInput);
+      setSearchInput('');
+      e.preventDefault();
     }
-    // Then apply pinned filter
+  };
+  
+  // Combine applied search terms with the live in-progress filter.
+  const effectiveFilters = [...searchTerms];
+  if (searchInput) {
+      effectiveFilters.push(searchInput);
+  }
+  
+  // Get filtered and sorted containers and apply full effective filter.
+  const containers = getSortedContainers(getFilteredContainers()).filter(container => {
+    const containerName = container.name.toLowerCase();
+
+    // Combine applied (searchTerms) and current live input (searchInput) filters.
+    if (effectiveFilters.length > 0 && !effectiveFilters.every(term => containerName.includes(term.toLowerCase()))) {
+        return false;
+    }
+
+    // Apply pinned filter if there are any pinned containers
     if (pinnedServices.size > 0) {
       return pinnedServices.has(container.id);
     }
+
     return true;
   });
   
@@ -74,18 +93,45 @@ const VirtualizedContainerList = () => {
   const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
   const listHeight = calculateListHeight();
 
-  const handleSearchInputChange = (e) => {
-    setSearchInput(e.target.value);
-  };
-
-  const handleSearchKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      if (searchInput) {
-        addSearchTerm(searchInput);
-        setSearchInput('');
+  // Global keyboard input handler
+  useEffect(() => {
+    const handleGlobalKeyPress = (e) => {
+      // Ignore if Control/Meta key is pressed
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'a') {
+          e.preventDefault(); // Prevent default select all behavior
+          // Implement logic to "select" all filter bubbles
+          console.log('Select all filters');
+          return;
+        }
+        return;
       }
-    }
-  };
+
+      // Handle Enter key press globally
+      if (e.key === 'Enter' && searchInput) {
+        addSearchTerm(searchInput); // Add the current search input as a term
+        setSearchInput(''); // Clear the input field
+        return;
+      }
+
+      // Ignore other keys if the target is an input element
+      if (e.target.tagName === 'INPUT') {
+        return;
+      }
+
+      // Only handle alphanumeric keys, space, and common punctuation
+      if (e.key.length === 1 && /[\w\s.,!?-]/.test(e.key)) {
+        setSearchInput(prev => prev + e.key);
+      } else if (e.key === 'Backspace') {
+        setSearchInput(prev => prev.slice(0, -1));
+      } else if (e.key === 'Escape') {
+        clearSearch();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyPress);
+    return () => window.removeEventListener('keydown', handleGlobalKeyPress);
+  }, [searchInput, addSearchTerm]);
 
   const clearSearch = () => {
     setSearchInput('');
@@ -93,9 +139,9 @@ const VirtualizedContainerList = () => {
   };
 
   return (
-    <div className="flex flex-col h-[600px] bg-gray-900/50 rounded-xl overflow-hidden border border-gray-800/50">
-      {/* Header section with integrated filters and search */}
-      <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
+    <div className="flex flex-col h-full bg-gray-900/50 rounded-xl overflow-hidden">
+      {/* Header section without grey backdrop */}
+      <div className="flex flex-col px-4 py-2.5 border-b border-gray-800/50 bg-gray-800/20 shadow-lg shadow-black/10">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
           <div className="flex flex-col gap-2">
             <div className="relative flex items-center gap-2">
@@ -103,25 +149,26 @@ const VirtualizedContainerList = () => {
               <input
                 type="text"
                 value={searchInput}
-                onChange={handleSearchInputChange}
-                onKeyPress={handleSearchKeyPress}
-                placeholder="Search by name"
-                className="bg-gray-700 text-white rounded-md pl-8 pr-8 py-1 focus:outline-none w-full"
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Type to search"
+                autoFocus
+                className="bg-transparent text-white rounded-md pl-8 pr-8 py-1 focus:outline-none w-full transition-colors duration-300 hover:bg-gray-800/20 hover:shadow-lg hover:border-gray-500"
+                onKeyDown={handleInputKeyDown}
               />
               {searchInput && (
-                <button onClick={() => setSearchInput('')} className="absolute right-2 text-gray-400 hover:text-white">
+                <button onClick={() => setSearchInput('')} className="absolute right-2 text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md">
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
             {searchTerms.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {searchTerms.map((term, index) => (
                   <div key={index} className="flex items-center gap-1 bg-gray-700/50 px-2 py-0.5 rounded text-sm text-gray-300">
                     <span>{term}</span>
                     <button
                       onClick={() => removeSearchTerm(term)}
-                      className="text-gray-400 hover:text-white"
+                      className="text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -129,7 +176,7 @@ const VirtualizedContainerList = () => {
                 ))}
                 <button
                   onClick={clearSearch}
-                  className="text-xs text-gray-400 hover:text-white"
+                  className="text-xs text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md"
                 >
                   Clear all
                 </button>

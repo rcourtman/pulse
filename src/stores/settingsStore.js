@@ -9,7 +9,6 @@ const DEFAULT_USER_PREFERENCES = {
 const INITIAL_STATE = {
   credentials: null,
   isLoading: true,
-  showSettings: false,
   userPreferences: DEFAULT_USER_PREFERENCES
 };
 
@@ -30,11 +29,6 @@ export const useSettingsStore = create(
 
       // Loading State
       setIsLoading: (isLoading) => set({ isLoading }),
-
-      // Settings Panel Visibility
-      setShowSettings: (show) => set({ showSettings: show }),
-
-
 
       // User Preferences
       setUserPreferences: (newPreferences) =>

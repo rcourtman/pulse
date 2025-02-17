@@ -49,7 +49,7 @@ const ThresholdFilterBar = () => {
                   {customThresholds[metric] ? `>${customThresholds[metric].value}${config.unit}` : 'Off'}
                 </span>
               </div>
-              <div className="relative flex-1">
+              <div className="relative flex-1 scrollable">
                 <div className="absolute w-full h-1 -mt-[2px] flex justify-between px-[2px]">
                   {[0, 25, 50, 75, 100].map((tick) => (
                     <div key={tick} className="w-0.5 h-1 bg-gray-600" />

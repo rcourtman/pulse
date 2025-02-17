@@ -66,22 +66,13 @@ export const useContainerStore = create((set, get) => ({
   // Get Filtered Containers
   getFilteredContainers: () => {
     const state = get();
-    const { containers, searchTerms } = state;
+    const { containers } = state;
     const { thresholds } = useSettingsStore.getState();
     
     if (!containers) return [];
-
+  
     let filteredContainers = containers;
-
-    // Apply search term filtering
-    if (searchTerms.length > 0) {
-      filteredContainers = filteredContainers.filter(container => {
-        return searchTerms.some(term => 
-          container.name.toLowerCase().includes(term.toLowerCase())
-        );
-      });
-    }
-
+  
     // Apply custom threshold filtering
     const { customThresholds } = state;
     if (Object.keys(customThresholds).length > 0) {
@@ -96,7 +87,7 @@ export const useContainerStore = create((set, get) => ({
           
           // Ensure we have a valid number
           const value = typeof rawValue === 'number' && !isNaN(rawValue) ? rawValue : 0;
-
+  
           switch(threshold.operator) {
             case '>':
               return value > threshold.value;
@@ -114,7 +105,7 @@ export const useContainerStore = create((set, get) => ({
         });
       });
     }
-
+  
     return filteredContainers;
   },
 

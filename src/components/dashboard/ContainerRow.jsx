@@ -4,12 +4,11 @@ import { cn } from "../../lib/utils";
 import ContainerRowBase from './ContainerRowBase';
 
 // Utility functions
-const formatNetworkRate = (rateInKB) => {
-  if (rateInKB >= 1024 * 1024) {
-    return `${Math.round(rateInKB / (1024 * 1024))} GB/s`;
-  } else if (rateInKB >= 1024) {
-    return `${Math.round(rateInKB / 1024)} MB/s`;
+const formatNetworkRate = (rateInMB) => {
+  if (rateInMB >= 1) {
+    return `${Math.round(rateInMB)} MB/s`;
   } else {
+    const rateInKB = rateInMB * 1024; // Convert MB to KB
     return `${Math.round(rateInKB)} KB/s`;
   }
 };
@@ -104,25 +103,19 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
 
       {/* Network Usage */}
       <ContainerRowBase.MetricCell>
-        <div className="flex flex-col w-full">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`w-20 text-xs ${netInColor}`}>↓ {formatNetworkRate(container.networkIn)}</span>
-            <div className="flex-1 bg-gray-700 rounded-full h-1 relative">
-              <div
-                className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
-                style={{ width: `${Math.min(container.networkIn, 100)}%` }}
-              />
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`w-20 text-xs ${netOutColor}`}>↑ {formatNetworkRate(container.networkOut)}</span>
-            <div className="flex-1 bg-gray-700 rounded-full h-1 relative">
-              <div
-                className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
-                style={{ width: `${Math.min(container.networkOut, 100)}%` }}
-              />
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-xs ${netInColor}`}>↓ {formatNetworkRate(container.networkIn)}</span>
+          <span className={`text-xs ${netOutColor}`}>↑ {formatNetworkRate(container.networkOut)}</span>
+        </div>
+        <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
+          <div
+            className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
+            style={{ width: `${Math.min(container.networkIn, 100)}%` }}
+          />
+          <div
+            className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
+            style={{ width: `${Math.min(container.networkOut, 100)}%`, position: 'absolute', top: 0 }}
+          />
         </div>
       </ContainerRowBase.MetricCell>
 
