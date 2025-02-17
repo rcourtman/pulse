@@ -3,7 +3,9 @@ import { FixedSizeList as List } from 'react-window';
 import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
-import ThresholdFilterBar from './ThresholdFilterBar';
+
+import HeaderCell from './HeaderCell';
+import { Search } from 'lucide-react';
 
 const CONTAINER_ROW_HEIGHT = 48;
 const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
@@ -15,7 +17,10 @@ const VirtualizedContainerList = () => {
     pinnedServices,
     togglePinned,
     getAlertScore,
-    loading
+    loading,
+    searchTerms,
+    addSearchTerm,
+    clearSearchTerms
   } = useContainerStore();
 
   const { thresholds, userPreferences } = useSettingsStore();
@@ -52,18 +57,43 @@ const VirtualizedContainerList = () => {
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
     const totalHeight = 600;
-    const headerHeight = 48; // Height for the table header
+    const headerHeight = 40;
     return totalHeight - headerHeight;
   };
 
   const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
   const listHeight = calculateListHeight();
 
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    clearSearchTerms();
+    if (value) {
+      addSearchTerm(value);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-gray-900/50 rounded-xl overflow-hidden border border-gray-800/50">
-      {/* Integrated header section */}
-      <div className="flex-none">
-        <ThresholdFilterBar />
+      {/* Header section with integrated filters and search */}
+      <div className="flex flex-col px-4 py-2.5 bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10">
+        <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-[120px]">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                onChange={handleSearch}
+                placeholder="Search..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-7 pr-2 py-1 text-xs text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <HeaderCell metric="cpu" label="CPU" />
+          <HeaderCell metric="memory" label="Memory" />
+          <HeaderCell metric="disk" label="Disk" />
+          <HeaderCell metric="network" label="Network" unit="MB/s" />
+          <div></div>
+        </div>
       </div>
       
       {/* Container list section */}
