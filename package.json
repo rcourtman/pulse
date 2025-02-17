@@ -12,6 +12,7 @@
     "tailwind": "tailwindcss"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-icons": "^1.3.0",
     "@radix-ui/react-label": "^2.1.2",

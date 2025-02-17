@@ -10,7 +10,8 @@ const INITIAL_STATE = {
     direction: 'desc'
   },
   pinnedServices: new Set(),
-  searchTerms: []
+  searchTerms: [],
+  activeThresholds: []
 };
 
 export const useContainerStore = create((set, get) => ({
@@ -81,6 +82,39 @@ export const useContainerStore = create((set, get) => ({
       });
     }
 
+    // Apply custom threshold filtering
+    const { customThresholds } = state;
+    if (Object.keys(customThresholds).length > 0) {
+      filteredContainers = filteredContainers.filter(container => {
+        return Object.entries(customThresholds).every(([metric, threshold]) => {
+          if (!threshold) return true;
+          
+          // Handle undefined or null metrics
+          const rawValue = metric === 'network'
+            ? Math.max(container.networkIn || 0, container.networkOut || 0)
+            : container[metric];
+          
+          // Ensure we have a valid number
+          const value = typeof rawValue === 'number' && !isNaN(rawValue) ? rawValue : 0;
+
+          switch(threshold.operator) {
+            case '>':
+              return value > threshold.value;
+            case '<':
+              return value < threshold.value;
+            case '>=':
+              return value >= threshold.value;
+            case '<=':
+              return value <= threshold.value;
+            case '=':
+              return value === threshold.value;
+            default:
+              return true;
+          }
+        });
+      });
+    }
+
     return filteredContainers;
   },
 
@@ -131,6 +165,16 @@ export const useContainerStore = create((set, get) => ({
   getAlertScore: (container) => {
     return container.status === 'running' ? 0 : 0;
   },
+
+  // Custom Threshold Filtering
+  customThresholds: {},
+  setCustomThreshold: (metric, threshold) => set(state => ({
+    customThresholds: {
+      ...state.customThresholds,
+      [metric]: threshold
+    }
+  })),
+  clearCustomThresholds: () => set({ customThresholds: {} }),
 
   // Reset state
   resetState: () => set(INITIAL_STATE)

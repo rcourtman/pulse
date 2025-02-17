@@ -3,6 +3,7 @@ import { FixedSizeList as List } from 'react-window';
 import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import ContainerRow from './ContainerRow';
+import ThresholdFilterBar from './ThresholdFilterBar';
 
 const CONTAINER_ROW_HEIGHT = 48; // Reduced from 64 to 48 for more compact rows
 const MIN_LIST_HEIGHT = CONTAINER_ROW_HEIGHT * 3;
@@ -51,37 +52,33 @@ const VirtualizedContainerList = () => {
 
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
-    // Get the parent container's height
-    const viewportHeight = window.innerHeight;
-    // Calculate a reasonable height (80% of viewport)
-    const calculatedHeight = Math.max(MIN_LIST_HEIGHT, viewportHeight * 0.8);
-    return calculatedHeight;
+    // Use a fixed height instead of viewport-based calculation
+    const totalHeight = 600; // Fixed total height for the component
+    const filterBarHeight = 48; // Height of the ThresholdFilterBar
+    return totalHeight - filterBarHeight;
   };
-
-  if (containers.length === 0 && !loading) {
-    return (
-      <div 
-        className="text-gray-400 text-center py-8 h-full"
-      >
-        No containers found
-      </div>
-    );
-  }
 
   const rowHeight = compactMode ? CONTAINER_ROW_HEIGHT * 0.75 : CONTAINER_ROW_HEIGHT;
   const listHeight = calculateListHeight();
 
   return (
-    <div style={{ height: '100%' }} className="relative">
-      <List
-        height={listHeight}
-        itemCount={containers.length}
-        itemSize={rowHeight}
-        width="100%"
-        className="container-list"
-      >
-        {Row}
-      </List>
+    <div style={{ height: '600px' }} className="relative">
+      <ThresholdFilterBar />
+      {containers.length === 0 && !loading ? (
+        <div className="text-gray-400 text-center py-8">
+          No containers found
+        </div>
+      ) : (
+        <List
+          height={listHeight}
+          itemCount={containers.length}
+          itemSize={rowHeight}
+          width="100%"
+          className="container-list"
+        >
+          {Row}
+        </List>
+      )}
       
       {/* Overlay loading indicator for subsequent updates */}
       {loading && containers.length > 0 && (
