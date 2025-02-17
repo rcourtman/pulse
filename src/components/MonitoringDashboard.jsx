@@ -39,6 +39,7 @@ const SortableHeader = ({ field, label, className = "" }) => {
 const SearchHeader = () => {
   const { searchTerms, addSearchTerm, clearSearchTerms } = useContainerStore();
   const [inputValue, setInputValue] = useState('');
+  const searchInputRef = useRef(null);
 
   const handleSearch = (e) => {
     const value = e.target.value;
@@ -49,6 +50,26 @@ const SearchHeader = () => {
     }
   };
 
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      // Ignore if target is an input or if user is pressing a modifier key
+      if (e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+      
+      // Ignore non-printable characters
+      if (e.key.length !== 1) {
+        return;
+      }
+
+      // Focus the search input and simulate typing
+      searchInputRef.current?.focus();
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   return (
     <div className="flex items-center gap-2">
       <input
@@ -56,6 +77,7 @@ const SearchHeader = () => {
         value={inputValue}
         onChange={handleSearch}
         placeholder="Search by name"
+        ref={searchInputRef}
         className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     </div>
