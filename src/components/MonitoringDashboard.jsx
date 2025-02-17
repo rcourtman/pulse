@@ -6,7 +6,6 @@ import { useSettingsStore } from '../stores/settingsStore';
 import VirtualizedContainerList from './dashboard/VirtualizedContainerList';
 import SettingsPanel from './dashboard/SettingsPanel';
 import useContainerData from './useContainerData';
-import HeaderThresholdSlider from './dashboard/HeaderThresholdSlider';
 
 const SortableHeader = ({ field, label, className = "" }) => {
   const { sortConfig, setSortConfig } = useContainerStore();
@@ -84,33 +83,7 @@ const SearchHeader = () => {
   );
 };
 
-const ThresholdsRow = ({ showThresholds }) => {
-  const { thresholds } = useSettingsStore();
-  const [isHovered, setIsHovered] = useState(false);
-  if (!thresholds.enabled) return null;
 
-  return (
-    <>
-      {showThresholds && isHovered && (
-        <div className="fixed inset-0 bg-black/30 pointer-events-none transition-opacity duration-300 ease-in-out z-10" />
-      )}
-      <div
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        className={`relative grid grid-cols-[1fr_1fr_1fr_1fr_1fr_40px] gap-4 px-3 py-2 bg-gray-800/50 border-y border-gray-700 overflow-hidden transition-all duration-300 ease-in-out z-20 ${showThresholds ? 'max-h-[80px] opacity-60 hover:opacity-100' : 'max-h-0 opacity-0 py-0 border-y-0'}`}
-      >
-        <div className="flex items-center">
-          <span className="text-xs font-medium text-gray-400">Resource Thresholds</span>
-        </div>
-        <HeaderThresholdSlider field="cpu" />
-        <HeaderThresholdSlider field="memory" />
-        <HeaderThresholdSlider field="disk" />
-        <HeaderThresholdSlider field="network" />
-        <div /> {/* Empty space for actions column */}
-      </div>
-    </>
-  );
-};
 
 const MonitoringDashboard = ({ credentials }) => {
   const { initialLoad } = useContainerData(credentials);
@@ -120,13 +93,9 @@ const MonitoringDashboard = ({ credentials }) => {
     error,
   } = useContainerStore();
   const { 
-    thresholds, 
-    setThresholds, 
     showSettings, 
     setShowSettings 
   } = useSettingsStore();
-
-  const [showThresholds, setShowThresholds] = useState(true);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6 flex flex-col">
@@ -136,31 +105,7 @@ const MonitoringDashboard = ({ credentials }) => {
           <p className="text-gray-400">Updated in real time.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setShowThresholds(!showThresholds)}
-            className={`relative group bg-gray-800 hover:bg-gray-700
-              ${thresholds.enabled ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
-              transition-all duration-300 ease-out`}
-            title={`${showThresholds ? 'Hide' : 'Show'} Thresholds`}
-          >
-            {showThresholds ? 
-              <ChevronUp className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" /> :
-              <ChevronDown className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-            }
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setThresholds({ enabled: !thresholds.enabled })}
-            className={`relative group bg-gray-800 hover:bg-gray-700
-              ${thresholds.enabled ? 'text-blue-400 border-blue-400' : 'text-gray-400 border-gray-600'}
-              transition-all duration-300 ease-out`}
-            title={`Alert Thresholds ${thresholds.enabled ? 'On' : 'Off'}`}
-          >
-            <Gauge className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-          </Button>
+
           <Button
             variant="outline"
             size="icon"
@@ -228,8 +173,6 @@ const MonitoringDashboard = ({ credentials }) => {
                 )}
               </div>
             </div>
-            
-            <ThresholdsRow showThresholds={showThresholds} />
 
             <div className="flex-1 overflow-auto min-h-0">
               <VirtualizedContainerList />

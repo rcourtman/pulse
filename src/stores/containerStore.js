@@ -40,27 +40,13 @@ export const useContainerStore = create((set, get) => ({
 
   // Pinned Services
   togglePinned: (containerId) => {
-    const settingsStore = useSettingsStore.getState();
-    const { thresholds, setThresholds } = settingsStore;
-    
     set((state) => {
       const newPinned = new Set(state.pinnedServices);
-      const hadPins = newPinned.size > 0;
-      
       if (newPinned.has(containerId)) {
         newPinned.delete(containerId);
-        // If this was the last pin and thresholds weren't manually disabled
-        if (newPinned.size === 0 && !thresholds.wasManuallyDisabled) {
-          setThresholds({ enabled: true });
-        }
       } else {
         newPinned.add(containerId);
-        // If this is the first pin and thresholds are enabled
-        if (!hadPins && thresholds.enabled) {
-          setThresholds({ enabled: false, wasManuallyDisabled: false });
-        }
       }
-      
       return { pinnedServices: newPinned };
     });
   },
@@ -80,16 +66,22 @@ export const useContainerStore = create((set, get) => ({
   getFilteredContainers: () => {
     const state = get();
     const { containers, searchTerms } = state;
+    const { thresholds } = useSettingsStore.getState();
     
     if (!containers) return [];
 
-    if (searchTerms.length === 0) return containers;
+    let filteredContainers = containers;
 
-    return containers.filter(container => 
-      searchTerms.some(term => 
-        container.name.toLowerCase().includes(term.toLowerCase())
-      )
-    );
+    // Apply search term filtering
+    if (searchTerms.length > 0) {
+      filteredContainers = filteredContainers.filter(container => {
+        return searchTerms.some(term => 
+          container.name.toLowerCase().includes(term.toLowerCase())
+        );
+      });
+    }
+
+    return filteredContainers;
   },
 
   // Get Sorted Containers
@@ -137,20 +129,7 @@ export const useContainerStore = create((set, get) => ({
 
   // Alert Score Calculation
   getAlertScore: (container) => {
-    const { thresholds } = useSettingsStore.getState();
-
-    if (!thresholds?.enabled || container.status !== 'running') {
-      return 0;
-    }
-
-    let score = 0;
-    if (container.cpu >= thresholds.cpu) score++;
-    if (container.memory >= thresholds.memory) score++;
-    if (container.disk >= thresholds.disk) score++;
-    if (container.networkIn >= thresholds.network) score++;
-    if (container.networkOut >= thresholds.network) score++;
-
-    return score > 0 ? 1 : 0;
+    return container.status === 'running' ? 0 : 0;
   },
 
   // Reset state

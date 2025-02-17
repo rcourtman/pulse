@@ -1,15 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-const DEFAULT_THRESHOLDS = {
-  cpu: 5,
-  memory: 80,
-  disk: 80,
-  network: 1024,
-  enabled: true,
-  wasManuallyDisabled: false
-};
-
 const DEFAULT_USER_PREFERENCES = {
   refreshRate: 2000,
   theme: 'dark'
@@ -19,7 +10,6 @@ const INITIAL_STATE = {
   credentials: null,
   isLoading: true,
   showSettings: false,
-  thresholds: DEFAULT_THRESHOLDS,
   userPreferences: DEFAULT_USER_PREFERENCES
 };
 
@@ -44,23 +34,7 @@ export const useSettingsStore = create(
       // Settings Panel Visibility
       setShowSettings: (show) => set({ showSettings: show }),
 
-      // Thresholds
-      setThresholds: (newThresholds) => 
-        set((state) => {
-          // If newThresholds is a function, execute it with current state
-          const updatedThresholds = typeof newThresholds === 'function' ?
-            newThresholds(state.thresholds) :
-            { ...state.thresholds, ...newThresholds };
 
-          // If enabled is being explicitly set, mark it as manual
-          if ('enabled' in newThresholds) {
-            updatedThresholds.wasManuallyDisabled = !newThresholds.enabled;
-          }
-
-          return { thresholds: updatedThresholds };
-        }),
-      resetThresholds: () => 
-        set({ thresholds: DEFAULT_THRESHOLDS }),
 
       // User Preferences
       setUserPreferences: (newPreferences) =>
@@ -85,7 +59,6 @@ export const useSettingsStore = create(
       version: 1,
       partialize: (state) => ({
         credentials: state.credentials,
-        thresholds: state.thresholds,
         userPreferences: state.userPreferences
       })
     }

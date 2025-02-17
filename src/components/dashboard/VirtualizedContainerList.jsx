@@ -21,7 +21,13 @@ const VirtualizedContainerList = () => {
   const { compactMode } = userPreferences;
 
   // Get filtered and sorted containers
-  const containers = getSortedContainers(getFilteredContainers());
+  const containers = getSortedContainers(getFilteredContainers()).filter(container => {
+    // If there are pinned services, only show pinned containers
+    if (pinnedServices.size > 0) {
+      return pinnedServices.has(container.id);
+    }
+    return true;
+  });
   
   // Memoized row renderer for react-window
   const Row = useCallback(({ index, style }) => {
