@@ -70,7 +70,11 @@ const VirtualizedContainerList = () => {
       <div className="flex-1 relative">
         {containers.length === 0 && !loading ? (
           <div className="text-gray-400 text-center py-8">
-            No containers found
+            {pinnedServices.size > 0
+              ? "No pinned containers found. Unpin some containers to see all available ones."
+              : thresholds?.some(t => t.enabled)
+                ? "No containers match the current threshold filters. Try adjusting the thresholds."
+                : "No containers found"}
           </div>
         ) : (
           <List

@@ -34,28 +34,27 @@ const ThresholdFilterBar = () => {
   return (
     <div className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/10 transition-all duration-300 ease-in-out overflow-hidden">
       <div 
-        className={`px-4 flex justify-between items-center cursor-pointer hover:bg-gray-700/30 transition-colors ${isExpanded ? 'py-2.5' : 'py-2'}`}
+        className={`px-4 flex justify-between items-center cursor-pointer hover:bg-gray-700/30 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${isExpanded ? 'py-3' : 'py-2.5'}`}
         onClick={() => setIsExpanded(!isExpanded)}
         role="button"
         tabIndex={0}
       >
         <div className="flex items-center gap-2">
-          <h3 className={`text-sm font-medium text-gray-300 ${!isExpanded && 'text-xs'}`}>Filters</h3>
+          <h3 className={`font-medium text-gray-300 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${!isExpanded ? 'text-xs translate-y-px' : 'text-sm translate-y-0'}`}>Filters</h3>
           {hasActiveFilters && (
-            <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-500/30 text-blue-200 rounded-md">
+            <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-500/30 text-blue-200 rounded-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]">
               Active
             </span>
           )}
         </div>
-        {isExpanded ? (
-          <ChevronUpIcon className="w-4 h-4 text-gray-400" />
-        ) : (
-          <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-        )}
-      </div>
-      <div
-        className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}
-      >
+        <div
+          className={`transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
+            <ChevronDownIcon className="w-4 h-4 text-gray-400 hover:text-gray-300 transition-colors duration-200" />
+          </div>
+        </div>
+        <div
+          className={`transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-top ${isExpanded ? 'max-h-96 opacity-100 scale-y-100' : 'max-h-0 opacity-0 scale-y-95 pointer-events-none'}`}
+        >
         <div className="px-4 pb-4 pt-1">
           <div className="flex justify-between items-start gap-2">
             <div className="flex flex-wrap gap-4 flex-1">
