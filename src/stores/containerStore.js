@@ -66,12 +66,20 @@ export const useContainerStore = create((set, get) => ({
   // Get Filtered Containers
   getFilteredContainers: () => {
     const state = get();
-    const { containers } = state;
+    const { containers, searchTerms } = state;
     const { thresholds } = useSettingsStore.getState();
     
     if (!containers) return [];
   
     let filteredContainers = containers;
+
+    // Apply search term filtering (OR logic)
+    if (searchTerms.length > 0) {
+      filteredContainers = filteredContainers.filter(container => {
+        const containerName = container.name.toLowerCase();
+        return searchTerms.some(term => containerName.includes(term.toLowerCase()));
+      });
+    }
   
     // Apply custom threshold filtering
     const { customThresholds } = state;

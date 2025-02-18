@@ -51,7 +51,7 @@ const VirtualizedContainerList = () => {
     const containerName = container.name.toLowerCase();
 
     // Combine applied (searchTerms) and current live input (searchInput) filters.
-    if (effectiveFilters.length > 0 && !effectiveFilters.every(term => containerName.includes(term.toLowerCase()))) {
+    if (effectiveFilters.length > 0 && !effectiveFilters.some(term => containerName.includes(term.toLowerCase()))) {
         return false;
     }
 
