@@ -11,7 +11,21 @@ const MonitoringDashboard = ({ credentials }) => {
     pinnedServices, 
     clearPinned,
     error,
+    clearSearchTerms,
+    clearCustomThresholds,
   } = useContainerStore();
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        clearSearchTerms();
+        clearCustomThresholds();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearSearchTerms, clearCustomThresholds]);
 
   return (
     <div className="min-h-screen bg-gray-900 p-6 flex flex-col">
