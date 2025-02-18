@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useContainerStore } from '../../stores/containerStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -28,9 +28,17 @@ const VirtualizedContainerList = () => {
   const { compactMode } = userPreferences;
 
   const [searchInput, setSearchInput] = useState('');
+  const searchInputRef = useRef(null);
 
   // Handler for the search input key events
   const handleInputKeyDown = (e) => {
+    // Clear the search input when Escape is pressed
+    if (e.key === 'Escape') {
+      clearSearch();
+      e.preventDefault();
+      return;
+    }
+
     if (e.key === 'Enter' && searchInput) {
       addSearchTerm(searchInput);
       setSearchInput('');
@@ -41,13 +49,16 @@ const VirtualizedContainerList = () => {
   // Get the full container list from the store
   const allContainers = useContainerStore(state => state.containers);
   
+  // Compute live matches based solely on the in-progress search input.
+  const liveMatches = searchInput
+    ? allContainers.filter(container =>
+        container.name.toLowerCase().includes(searchInput.toLowerCase())
+      )
+    : [];
+  
   // If there is live search input, union the committed matches with live matches.
   let unionContainers = [];
   if (searchInput) {
-    // containers matching the in‑progress search input (case‑insensitive)
-    const liveMatches = allContainers.filter(container =>
-      container.name.toLowerCase().includes(searchInput.toLowerCase())
-    );
     // containers matching the committed search terms (if any)
     const committedMatches = getFilteredContainers();
     // Build the union (deduplicating by container.id, adjust if needed)
@@ -94,11 +105,17 @@ const VirtualizedContainerList = () => {
   // Global keyboard input handler
   useEffect(() => {
     const handleGlobalKeyPress = (e) => {
+      // Always handle Escape key first, regardless of the event target
+      if (e.key === 'Escape') {
+        clearSearch();
+        e.preventDefault();
+        return;
+      }
+
       // Ignore if Control/Meta key is pressed
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'a') {
           e.preventDefault(); // Prevent default select all behavior
-          // Implement logic to "select" all filter bubbles
           console.log('Select all filters');
           return;
         }
@@ -107,12 +124,12 @@ const VirtualizedContainerList = () => {
 
       // Handle Enter key press globally
       if (e.key === 'Enter' && searchInput) {
-        addSearchTerm(searchInput); // Add the current search input as a term
-        setSearchInput(''); // Clear the input field
+        addSearchTerm(searchInput);
+        setSearchInput('');
         return;
       }
 
-      // Ignore other keys if the target is an input element
+      // Ignore key events if the target is an input element
       if (e.target.tagName === 'INPUT') {
         return;
       }
@@ -122,8 +139,6 @@ const VirtualizedContainerList = () => {
         setSearchInput(prev => prev + e.key);
       } else if (e.key === 'Backspace') {
         setSearchInput(prev => prev.slice(0, -1));
-      } else if (e.key === 'Escape') {
-        clearSearch();
       }
     };
 
@@ -134,6 +149,12 @@ const VirtualizedContainerList = () => {
   const clearSearch = () => {
     setSearchInput('');
     clearSearchTerms();
+    // Use a short delay to override any hover-induced focus on the slider
+    setTimeout(() => {
+      if (searchInputRef.current) {
+         searchInputRef.current.focus();
+      }
+    }, 0);
   };
 
   return (
@@ -145,14 +166,20 @@ const VirtualizedContainerList = () => {
             <div className="relative flex items-center gap-2 group flex-shrink-0 w-full">
               <Search className="absolute left-3 text-gray-400 w-4 h-4 group-hover:text-white transition-colors duration-300" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Type to search"
+                placeholder="Enter search term(s)"
                 autoFocus
-                className="bg-gray-800/30 text-white rounded-lg pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full transition-all duration-300 hover:bg-gray-800/40 placeholder-gray-500"
+                className="bg-gray-800/30 text-white rounded-lg pl-9 pr-20 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full transition-all duration-300 hover:bg-gray-800/40 placeholder-gray-500"
                 onKeyDown={handleInputKeyDown}
               />
+              {searchInput && (
+                <span className="absolute right-12 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 bg-gray-700/30 px-1 rounded">
+                  {liveMatches.length} {liveMatches.length === 1 ? 'match' : 'matches'}
+                </span>
+              )}
               {searchInput && (
                 <button 
                   onClick={() => setSearchInput('')} 
@@ -185,9 +212,14 @@ const VirtualizedContainerList = () => {
       <div className="flex-1 relative">
         {containers.length === 0 && !loading ? (
           <div className="text-gray-400 text-center py-8">
-            {searchInput.length > 0 || Object.keys(customThresholds).length > 0
-              ? "No containers match the current filter settings. Press 'Escape' to clear filters."
-              : "No containers found"}
+            {(() => {
+              // Build an array of applied regex searches from committed terms and live input.
+              const appliedSearches = [...searchTerms];
+              if (searchInput.trim().length) appliedSearches.push(searchInput.trim());
+              return appliedSearches.length > 0
+                ? `Your search for "${appliedSearches.join(', ')}" returned no containers. Press 'Escape' to clear filters.`
+                : "No containers found";
+            })()}
           </div>
         ) : (
           <List
