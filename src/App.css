@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+.highlight {
+    font-weight: bold; /* Keep the text bold */
+    border-radius: 3px; /* Optional: keep or remove based on preference */
+    padding: 0 2px; /* Optional: keep or remove based on preference */
+}

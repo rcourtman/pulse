@@ -14,6 +14,11 @@
             "date": 1739750400322,
             "name": "/Users/rcourtman/Documents/pulse/logs/combined-2025-02-17.log",
             "hash": "5aaf8d1a304df33d67d0bb4a769bf69aad4edcc37311ec9844657e92bd0357fc"
+        },
+        {
+            "date": 1739914167161,
+            "name": "/Users/rcourtman/Documents/pulse/logs/combined-2025-02-18.log",
+            "hash": "65dcf59d46a1a5cdbc104990d634334fdff414f486747eea108dcf8af327b9f7"
         }
     ],
     "hashType": "sha256"

@@ -2,6 +2,7 @@ import React from 'react';
 import { Gauge } from "lucide-react";
 import { cn } from "../../lib/utils";
 import ContainerRowBase from './ContainerRowBase';
+import { useContainerStore } from '../../stores/containerStore';
 
 // Utility functions
 const formatNetworkRate = (rateInMB) => {
@@ -29,9 +30,63 @@ const getProgressBarColor = (value, type = 'default') => {
   }
 };
 
+// Utility function to highlight search terms in text
+const highlightSearchTerms = (text, searchTerms) => {
+  if (!searchTerms || searchTerms.length === 0) return text;
+
+  const parts = [];
+  let lastIndex = 0;
+  const lowerText = text.toLowerCase();
+
+  searchTerms.forEach((term, termIndex) => {
+    const lowerTerm = term.toLowerCase();
+    let index = lowerText.indexOf(lowerTerm, lastIndex);
+    
+    while (index !== -1) {
+      // Add non-matching text before the match
+      if (index > lastIndex) {
+        parts.push({
+          text: text.slice(lastIndex, index),
+          isMatch: false,
+          key: `${lastIndex}-${index}-${termIndex}`
+        });
+      }
+      
+      // Add the matching text
+      parts.push({
+        text: text.slice(index, index + term.length),
+        isMatch: true,
+        key: `match-${index}-${termIndex}`
+      });
+      
+      lastIndex = index + term.length;
+      index = lowerText.indexOf(lowerTerm, lastIndex);
+    }
+  });
+
+  // Add any remaining text
+  if (lastIndex < text.length) {
+    parts.push({
+      text: text.slice(lastIndex),
+      isMatch: false,
+      key: `end-${lastIndex}`
+    });
+  }
+
+  return parts.map(part => (
+    <span
+      key={part.key}
+      className={part.isMatch ? 'bg-yellow-300/20 text-yellow-50 rounded-sm px-0.5 transition-colors duration-150' : undefined}
+    >
+      {part.text}
+    </span>
+  ));
+};
+
 const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
+  const { searchTerms } = useContainerStore();
 
   const nameColor = isRunning ? 'text-gray-200' : 'text-gray-500';
   
@@ -55,7 +110,7 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
           title={container.ip ? `IP: ${container.ip}` : ''} 
           className={nameColor}
         >
-          {container.name}
+          {highlightSearchTerms(container.name, searchTerms)}
         </span>
       </div>
 
@@ -103,32 +158,40 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
 
       {/* Network Usage */}
       <ContainerRowBase.MetricCell>
-        <div className="flex flex-col gap-1 w-full">
-          {/* Download */}
-          <div className="flex items-center gap-2">
-            <span className={`text-xs w-20 ${netInColor}`}>↓ {formatNetworkRate(container.networkIn)}</span>
+        <div className="flex flex-col w-full gap-1">
+          <div className="flex items-center gap-1">
+            <span className={`w-20 text-xs ${netOutColor}`}>
+              ↑ {formatNetworkRate(container.networkOut)}
+            </span>
             <div className="flex-1 bg-gray-700 rounded-full h-1.5">
               <div
-                className="bg-blue-500 h-full rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(container.networkIn * 10, 100)}%` }}
+                className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
+                style={{ width: `${Math.min(container.networkOut, 100)}%` }}
               />
             </div>
           </div>
-          {/* Upload */}
-          <div className="flex items-center gap-2">
-            <span className={`text-xs w-20 ${netOutColor}`}>↑ {formatNetworkRate(container.networkOut)}</span>
+          <div className="flex items-center gap-1">
+            <span className={`w-20 text-xs ${netInColor}`}>
+              ↓ {formatNetworkRate(container.networkIn)}
+            </span>
             <div className="flex-1 bg-gray-700 rounded-full h-1.5">
               <div
-                className="bg-purple-500 h-full rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(container.networkOut * 10, 100)}%` }}
+                className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
+                style={{ width: `${Math.min(container.networkIn, 100)}%` }}
               />
             </div>
           </div>
         </div>
       </ContainerRowBase.MetricCell>
 
-      {/* Empty space for grid alignment */}
-      <div className="w-6" />
+      {/* Alert Score */}
+      <div className="flex items-center justify-end">
+        {isAlerted && (
+          <div className="p-1.5 bg-red-500/20 rounded-lg">
+            <Gauge className="w-4 h-4 text-red-500" />
+          </div>
+        )}
+      </div>
     </ContainerRowBase>
   );
 });

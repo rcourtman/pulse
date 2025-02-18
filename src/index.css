@@ -30,3 +30,9 @@
 ::-webkit-scrollbar-thumb:hover {
   background-color: #4a4aff; /* Even lighter color on hover */
 }
+.search-highlight {
+  background-color: rgba(255, 255, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 0, 0.5);
+  border-radius: 2px;
+  padding: 0 2px;
+}

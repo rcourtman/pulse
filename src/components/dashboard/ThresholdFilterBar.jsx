@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useContainerStore } from '../../stores/containerStore';
 import { Button } from '../ui/button';
 
@@ -10,6 +10,7 @@ const METRICS = {
 
 const ThresholdFilterBar = () => {
   const { setCustomThreshold, customThresholds } = useContainerStore();
+  const [query, setQuery] = useState('');
 
   const handleSliderChange = (metric, value) => {
     if (value === 0) {
@@ -30,8 +31,25 @@ const ThresholdFilterBar = () => {
 
   const hasActiveFilters = Object.values(customThresholds).some(threshold => threshold !== null);
 
+  const getHighlightedText = (text, query) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === query.toLowerCase() ? 
+      <span key={index} className="highlight">{part}</span> : 
+      part
+    );
+  };
+
   return (
     <div className="flex items-center gap-4">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search..."
+        className="border p-1"
+      />
       {hasActiveFilters && (
         <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-500/30 text-blue-200 rounded-md">
           Active
@@ -42,7 +60,9 @@ const ThresholdFilterBar = () => {
           {Object.entries(METRICS).map(([metric, config]) => (
             <div key={metric} className="flex items-center gap-3 min-w-[180px]">
               <div className="flex items-center gap-2 min-w-[80px]">
-                <span className="text-sm font-medium text-gray-300">{config.name}</span>
+                <span className="text-sm font-medium text-gray-300">
+                  {getHighlightedText(config.name, query)}
+                </span>
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${customThresholds[metric] 
                   ? 'bg-blue-500/20 text-blue-300' 
                   : 'bg-gray-700/50 text-gray-400'}`}>

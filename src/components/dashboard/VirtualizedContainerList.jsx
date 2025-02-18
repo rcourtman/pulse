@@ -14,8 +14,6 @@ const VirtualizedContainerList = () => {
   const {
     getFilteredContainers,
     getSortedContainers,
-    pinnedServices,
-    togglePinned,
     getAlertScore,
     loading,
     searchTerms,
@@ -55,11 +53,6 @@ const VirtualizedContainerList = () => {
         return false;
     }
 
-    // Apply pinned filter if there are any pinned containers
-    if (pinnedServices.size > 0) {
-      return pinnedServices.has(container.id);
-    }
-
     return true;
   });
   
@@ -72,16 +65,13 @@ const VirtualizedContainerList = () => {
       <div style={style}>
         <ContainerRow
           container={container}
-          isPinned={pinnedServices.has(container.id)}
-          onTogglePin={togglePinned}
           getAlertScore={getAlertScore}
-          hasPinnedContainers={pinnedServices.size > 0}
           thresholds={thresholds}
           compact={compactMode}
         />
       </div>
     );
-  }, [containers, pinnedServices, togglePinned, getAlertScore, thresholds, compactMode]);
+  }, [containers, getAlertScore, thresholds, compactMode]);
 
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
@@ -140,48 +130,30 @@ const VirtualizedContainerList = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-900/50 rounded-xl overflow-hidden">
-      {/* Header section without grey backdrop */}
-      <div className="flex flex-col px-4 py-2.5 border-b border-gray-800/50 bg-gray-800/20 shadow-lg shadow-black/10">
+      {/* Header section with improved styling */}
+      <div className="flex flex-col px-4 py-3 border-b border-gray-800/50 bg-gradient-to-b from-gray-800/30 to-gray-800/10 backdrop-blur-sm">
         <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
-          <div className="flex flex-col gap-2">
-            <div className="relative flex items-center gap-2">
-              <Search className="absolute left-2 text-gray-400 w-4 h-4" />
+          <div className="flex items-center gap-2">
+            <div className="relative flex items-center gap-2 group flex-shrink-0">
+              <Search className="absolute left-3 text-gray-400 w-4 h-4 group-hover:text-white transition-colors duration-300" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Type to search"
                 autoFocus
-                className="bg-transparent text-white rounded-md pl-8 pr-8 py-1 focus:outline-none w-full transition-colors duration-300 hover:bg-gray-800/20 hover:shadow-lg hover:border-gray-500"
+                className="bg-gray-800/30 text-white rounded-lg pl-9 pr-9 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/40 w-full transition-all duration-300 hover:bg-gray-800/40 placeholder-gray-500"
                 onKeyDown={handleInputKeyDown}
               />
               {searchInput && (
-                <button onClick={() => setSearchInput('')} className="absolute right-2 text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md">
-                  <X className="w-4 h-4" />
+                <button 
+                  onClick={() => setSearchInput('')} 
+                  className="absolute right-3 text-gray-400 hover:text-white transition-colors duration-300 p-1 hover:bg-gray-700/50 rounded-full"
+                >
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            {searchTerms.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {searchTerms.map((term, index) => (
-                  <div key={index} className="flex items-center gap-1 bg-gray-700/50 px-2 py-0.5 rounded text-sm text-gray-300">
-                    <span>{term}</span>
-                    <button
-                      onClick={() => removeSearchTerm(term)}
-                      className="text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={clearSearch}
-                  className="text-xs text-gray-400 hover:text-white transition-colors duration-300 hover:shadow-md"
-                >
-                  Clear all
-                </button>
-              </div>
-            )}
           </div>
           <HeaderCell metric="cpu" label="CPU" />
           <HeaderCell metric="memory" label="Memory" />
@@ -191,7 +163,7 @@ const VirtualizedContainerList = () => {
             {Object.keys(customThresholds).length > 0 && (
               <button
                 onClick={clearCustomThresholds}
-                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200"
+                className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 title="Reset all thresholds"
               >
                 <FilterX className="w-4 h-4" />
@@ -205,11 +177,9 @@ const VirtualizedContainerList = () => {
       <div className="flex-1 relative">
         {containers.length === 0 && !loading ? (
           <div className="text-gray-400 text-center py-8">
-            {pinnedServices.size > 0
-              ? "No pinned containers found. Unpin some containers to see all available ones."
-              : thresholds?.some(t => t.enabled)
-                ? "No containers match the current threshold filters. Try adjusting the thresholds."
-                : "No containers found"}
+            {thresholds?.some(t => t.enabled)
+              ? "No containers match the current threshold filters. Try adjusting the thresholds."
+              : "No containers found"}
           </div>
         ) : (
           <List
