@@ -139,10 +139,10 @@ const VirtualizedContainerList = () => {
   return (
     <div className="flex flex-col h-full bg-gray-900/50 rounded-xl overflow-hidden">
       {/* Header section with improved styling */}
-      <div className="flex flex-col px-4 py-3 border-b border-gray-800/50 bg-gradient-to-b from-gray-800/30 to-gray-800/10 backdrop-blur-sm">
-        <div className="grid grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 w-full">
-          <div className="flex items-center gap-2">
-            <div className="relative flex items-center gap-2 group flex-shrink-0">
+      <div className="flex flex-col px-2 sm:px-4 py-2 sm:py-3 border-b border-gray-800/50 bg-gradient-to-b from-gray-800/30 to-gray-800/10 backdrop-blur-sm">
+        <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-2 sm:gap-4 w-full">
+          <div className="flex items-center gap-2 col-span-2 sm:col-span-1 mb-2 sm:mb-0">
+            <div className="relative flex items-center gap-2 group flex-shrink-0 w-full">
               <Search className="absolute left-3 text-gray-400 w-4 h-4 group-hover:text-white transition-colors duration-300" />
               <input
                 type="text"
@@ -163,10 +163,10 @@ const VirtualizedContainerList = () => {
               )}
             </div>
           </div>
-          <HeaderCell metric="cpu" label="CPU" />
-          <HeaderCell metric="memory" label="Memory" />
-          <HeaderCell metric="disk" label="Disk" />
-          <HeaderCell metric="network" label="Network" unit="MB/s" />
+          <div className="hidden sm:block"><HeaderCell metric="cpu" label="CPU" /></div>
+          <div className="hidden sm:block"><HeaderCell metric="memory" label="Memory" /></div>
+          <div className="hidden sm:block"><HeaderCell metric="disk" label="Disk" /></div>
+          <div className="hidden sm:block"><HeaderCell metric="network" label="Network" unit="MB/s" /></div>
           <div className="flex items-center justify-end">
             {Object.keys(customThresholds).length > 0 && (
               <button

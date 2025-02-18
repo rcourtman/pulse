@@ -107,89 +107,106 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact, searchInpu
 
   return (
     <ContainerRowBase compact={compact}>
-      {/* Container Name */}
-      <div className="flex items-center gap-2">
-        <div className={`w-2 h-2 rounded-full ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
-        <span 
-          title={container.ip ? `IP: ${container.ip}` : ''} 
-          className={nameColor}
-        >
-          {highlightedName}
-        </span>
+      {/* Container Name and Mobile Metrics */}
+      <div className="grid grid-cols-[1fr_auto] sm:grid-cols-1 items-center gap-2 col-span-2 sm:col-span-1 w-full">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isRunning ? 'bg-green-500' : 'bg-gray-500'}`} />
+          <span 
+            title={container.ip ? `IP: ${container.ip}` : ''} 
+            className={`${nameColor} truncate`}
+          >
+            {highlightedName}
+          </span>
+        </div>
+        
+        {/* Mobile metrics summary */}
+        <div className="flex sm:hidden items-center gap-3">
+          <div className="flex flex-col items-end">
+            <span className={`text-xs ${cpuColor}`}>CPU: {container.cpu.toFixed(1)}%</span>
+            <span className={`text-xs ${memColor}`}>Mem: {container.memory}%</span>
+          </div>
+          {isAlerted && (
+            <div className="p-1.5 bg-red-500/20 rounded-lg">
+              <Gauge className="w-4 h-4 text-red-500" />
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* CPU Usage */}
-      <ContainerRowBase.MetricCell>
-        <div className="flex items-center gap-1">
-          <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
-        </div>
-        <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
-          <div
-            className={`${getProgressBarColor(container.cpu)} h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(container.cpu, 100)}%` }}
-          />
-
-        </div>
-      </ContainerRowBase.MetricCell>
-
-      {/* Memory Usage */}
-      <ContainerRowBase.MetricCell>
-        <div className="flex items-center gap-1">
-          <span className={`w-12 ${memColor}`}>{container.memory}%</span>
-        </div>
-        <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
-          <div
-            className={`${getProgressBarColor(container.memory)} h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(container.memory, 100)}%` }}
-          />
-
-        </div>
-      </ContainerRowBase.MetricCell>
-
-      {/* Disk Usage */}
-      <ContainerRowBase.MetricCell>
-        <div className="flex items-center gap-1">
-          <span className={`w-12 ${diskColor}`}>{container.disk}%</span>
-        </div>
-        <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
-          <div
-            className={`${getProgressBarColor(container.disk)} h-full rounded-full transition-all duration-300`}
-            style={{ width: `${Math.min(container.disk, 100)}%` }}
-          />
-
-        </div>
-      </ContainerRowBase.MetricCell>
-
-      {/* Network Usage */}
-      <ContainerRowBase.MetricCell>
-        <div className="flex flex-col w-full gap-1">
+    
+      {/* Desktop metrics */}
+      <div className="hidden sm:block">
+        <ContainerRowBase.MetricCell>
           <div className="flex items-center gap-1">
-            <span className={`w-20 text-xs ${netOutColor}`}>
-              ↑ {formatNetworkRate(container.networkOut)}
-            </span>
-            <div className="flex-1 bg-gray-700 rounded-full h-1.5">
-              <div
-                className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
-                style={{ width: `${Math.min(container.networkOut, 100)}%` }}
-              />
+            <span className={`w-12 ${cpuColor}`}>{container.cpu.toFixed(1)}%</span>
+          </div>
+          <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
+            <div
+              className={`${getProgressBarColor(container.cpu)} h-full rounded-full transition-all duration-300`}
+              style={{ width: `${Math.min(container.cpu, 100)}%` }}
+            />
+          </div>
+        </ContainerRowBase.MetricCell>
+      </div>
+    
+      <div className="hidden sm:block">
+        <ContainerRowBase.MetricCell>
+          <div className="flex items-center gap-1">
+            <span className={`w-12 ${memColor}`}>{container.memory}%</span>
+          </div>
+          <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
+            <div
+              className={`${getProgressBarColor(container.memory)} h-full rounded-full transition-all duration-300`}
+              style={{ width: `${Math.min(container.memory, 100)}%` }}
+            />
+          </div>
+        </ContainerRowBase.MetricCell>
+      </div>
+    
+      <div className="hidden sm:block">
+        <ContainerRowBase.MetricCell>
+          <div className="flex items-center gap-1">
+            <span className={`w-12 ${diskColor}`}>{container.disk}%</span>
+          </div>
+          <div className="flex-1 bg-gray-700 rounded-full h-2 relative">
+            <div
+              className={`${getProgressBarColor(container.disk)} h-full rounded-full transition-all duration-300`}
+              style={{ width: `${Math.min(container.disk, 100)}%` }}
+            />
+          </div>
+        </ContainerRowBase.MetricCell>
+      </div>
+    
+      <div className="hidden sm:block">
+        <ContainerRowBase.MetricCell>
+          <div className="flex flex-col w-full gap-1">
+            <div className="flex items-center gap-1">
+              <span className={`w-20 text-xs ${netOutColor}`}>
+                ↑ {formatNetworkRate(container.networkOut)}
+              </span>
+              <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                <div
+                  className={`${getProgressBarColor(container.networkOut, 'network-up')} h-full rounded-full transition-all duration-300`}
+                  style={{ width: `${Math.min(container.networkOut, 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className={`w-20 text-xs ${netInColor}`}>
+                ↓ {formatNetworkRate(container.networkIn)}
+              </span>
+              <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                <div
+                  className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
+                  style={{ width: `${Math.min(container.networkIn, 100)}%` }}
+                />
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            <span className={`w-20 text-xs ${netInColor}`}>
-              ↓ {formatNetworkRate(container.networkIn)}
-            </span>
-            <div className="flex-1 bg-gray-700 rounded-full h-1.5">
-              <div
-                className={`${getProgressBarColor(container.networkIn, 'network-down')} h-full rounded-full transition-all duration-300`}
-                style={{ width: `${Math.min(container.networkIn, 100)}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </ContainerRowBase.MetricCell>
-
-      {/* Alert Score */}
-      <div className="flex items-center justify-end">
+        </ContainerRowBase.MetricCell>
+      </div>
+    
+      {/* Desktop alert indicator */}
+      <div className="hidden sm:flex items-center justify-end">
         {isAlerted && (
           <div className="p-1.5 bg-red-500/20 rounded-lg">
             <Gauge className="w-4 h-4 text-red-500" />
