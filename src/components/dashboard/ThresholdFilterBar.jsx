@@ -34,10 +34,17 @@ const ThresholdFilterBar = () => {
   const getHighlightedText = (text, query) => {
     if (!query) return text;
     const parts = text.split(new RegExp(`(${query})`, 'gi'));
-    return parts.map((part, index) => 
-      part.toLowerCase() === query.toLowerCase() ? 
-      <span key={index} className="highlight">{part}</span> : 
-      part
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span 
+          key={index} 
+          className="px-1 py-0.5 inline-block bg-blue-100 text-blue-800 rounded-sm font-semibold"
+        >
+          {part}
+        </span>
+      ) : (
+        part
+      )
     );
   };
 

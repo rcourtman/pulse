@@ -38,23 +38,30 @@ const VirtualizedContainerList = () => {
     }
   };
   
-  // Combine applied search terms with the live in-progress filter.
-  const effectiveFilters = [...searchTerms];
+  // Get the full container list from the store
+  const allContainers = useContainerStore(state => state.containers);
+  
+  // If there is live search input, union the committed matches with live matches.
+  let unionContainers = [];
   if (searchInput) {
-      effectiveFilters.push(searchInput);
+    // containers matching the in‑progress search input (case‑insensitive)
+    const liveMatches = allContainers.filter(container =>
+      container.name.toLowerCase().includes(searchInput.toLowerCase())
+    );
+    // containers matching the committed search terms (if any)
+    const committedMatches = getFilteredContainers();
+    // Build the union (deduplicating by container.id, adjust if needed)
+    unionContainers = [...committedMatches];
+    liveMatches.forEach(container => {
+      if (!unionContainers.some(c => c.id === container.id)) {
+        unionContainers.push(container);
+      }
+    });
+  } else {
+    unionContainers = getFilteredContainers();
   }
   
-  // Get filtered and sorted containers and apply full effective filter.
-  const containers = getSortedContainers(getFilteredContainers()).filter(container => {
-    const containerName = container.name.toLowerCase();
-
-    // Combine applied (searchTerms) and current live input (searchInput) filters.
-    if (effectiveFilters.length > 0 && !effectiveFilters.some(term => containerName.includes(term.toLowerCase()))) {
-        return false;
-    }
-
-    return true;
-  });
+  const containers = getSortedContainers(unionContainers);
   
   // Memoized row renderer for react-window
   const Row = useCallback(({ index, style }) => {
@@ -68,10 +75,11 @@ const VirtualizedContainerList = () => {
           getAlertScore={getAlertScore}
           thresholds={thresholds}
           compact={compactMode}
+          searchInput={searchInput}
         />
       </div>
     );
-  }, [containers, getAlertScore, thresholds, compactMode]);
+  }, [containers, getAlertScore, thresholds, compactMode, searchInput]);
 
   // Calculate list height based on viewport and number of containers
   const calculateListHeight = () => {
@@ -177,8 +185,8 @@ const VirtualizedContainerList = () => {
       <div className="flex-1 relative">
         {containers.length === 0 && !loading ? (
           <div className="text-gray-400 text-center py-8">
-            {thresholds?.some(t => t.enabled)
-              ? "No containers match the current threshold filters. Try adjusting the thresholds."
+            {searchInput.length > 0 || Object.keys(customThresholds).length > 0
+              ? "No containers match the current filter settings. Press 'Escape' to clear filters."
               : "No containers found"}
           </div>
         ) : (

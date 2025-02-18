@@ -31,14 +31,15 @@ const getProgressBarColor = (value, type = 'default') => {
 };
 
 // Utility function to highlight search terms in text
-const highlightSearchTerms = (text, searchTerms) => {
-  if (!searchTerms || searchTerms.length === 0) return text;
+const highlightSearchTerms = (text, searchInput, searchTerms) => {
+  const terms = searchInput ? [searchInput, ...searchTerms] : searchTerms;
+  if (terms.length === 0) return text;
 
   const parts = [];
   let lastIndex = 0;
   const lowerText = text.toLowerCase();
 
-  searchTerms.forEach((term, termIndex) => {
+  terms.forEach((term, termIndex) => {
     const lowerTerm = term.toLowerCase();
     let index = lowerText.indexOf(lowerTerm, lastIndex);
     
@@ -76,14 +77,14 @@ const highlightSearchTerms = (text, searchTerms) => {
   return parts.map(part => (
     <span
       key={part.key}
-      className={part.isMatch ? 'bg-yellow-300/20 text-yellow-50 rounded-sm px-0.5 transition-colors duration-150' : undefined}
+      className={part.isMatch ? 'font-bold transition duration-150' : 'text-gray-400'}
     >
       {part.text}
     </span>
   ));
 };
 
-const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
+const ContainerRow = React.memo(({ container, getAlertScore, compact, searchInput }) => {
   const isRunning = container.status === 'running';
   const isAlerted = getAlertScore(container) > 0;
   const { searchTerms } = useContainerStore();
@@ -101,6 +102,9 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
   const netInColor = getMetricColor(container.networkIn);
   const netOutColor = getMetricColor(container.networkOut);
 
+  // Use both searchInput and searchTerms for highlighting
+  const highlightedName = highlightSearchTerms(container.name, searchInput, searchTerms);
+
   return (
     <ContainerRowBase compact={compact}>
       {/* Container Name */}
@@ -110,7 +114,7 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact }) => {
           title={container.ip ? `IP: ${container.ip}` : ''} 
           className={nameColor}
         >
-          {highlightSearchTerms(container.name, searchTerms)}
+          {highlightedName}
         </span>
       </div>
 

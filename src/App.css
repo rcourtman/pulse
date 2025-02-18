@@ -46,3 +46,8 @@
     border-radius: 3px; /* Optional: keep or remove based on preference */
     padding: 0 2px; /* Optional: keep or remove based on preference */
 }
+
+.font-bold {
+  font-weight: bold;
+  background-color: transparent; /* Ensure no background color is applied */
+}

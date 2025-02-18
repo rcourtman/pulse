@@ -31,8 +31,9 @@
   background-color: #4a4aff; /* Even lighter color on hover */
 }
 .search-highlight {
-  background-color: rgba(255, 255, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 0, 0.5);
+  background-color: transparent;
+  border-bottom: 2px solid rgba(59, 130, 246, 0.5);
+  padding-bottom: 1px;
   border-radius: 2px;
   padding: 0 2px;
 }
