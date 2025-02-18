@@ -121,9 +121,15 @@ const ContainerRow = React.memo(({ container, getAlertScore, compact, searchInpu
         
         {/* Mobile metrics summary */}
         <div className="flex sm:hidden items-center gap-3">
-          <div className="flex flex-col items-end">
-            <span className={`text-xs ${cpuColor}`}>CPU: {container.cpu.toFixed(1)}%</span>
-            <span className={`text-xs ${memColor}`}>Mem: {container.memory}%</span>
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex gap-3">
+              <span className={`text-xs ${cpuColor}`}>CPU: {container.cpu.toFixed(1)}%</span>
+              <span className={`text-xs ${memColor}`}>Mem: {container.memory}%</span>
+            </div>
+            <div className="flex gap-3">
+              <span className={`text-xs ${diskColor}`}>Disk: {container.disk}%</span>
+              <span className={`text-xs ${netInColor}`}>Net: {formatNetworkRate(container.networkIn + container.networkOut)}</span>
+            </div>
           </div>
           {isAlerted && (
             <div className="p-1.5 bg-red-500/20 rounded-lg">
