@@ -19,6 +19,11 @@
             "date": 1739914167154,
             "name": "/Users/rcourtman/Documents/pulse/logs/error-2025-02-18.log",
             "hash": "1a691248b23f92127ceb548429ab2316af55bbce656c4fcacc01439b112d32fd"
+        },
+        {
+            "date": 1740005784047,
+            "name": "/Users/rcourtman/Documents/pulse/logs/error-2025-02-19.log",
+            "hash": "3df5f2be48e4333ea322026db9b6194a8be582f223f452e1c4c6338f899df07f"
         }
     ],
     "hashType": "sha256"
