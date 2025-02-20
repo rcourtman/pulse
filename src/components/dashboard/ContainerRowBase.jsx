@@ -26,7 +26,7 @@ const MetricCell = ({
   children,
   className
 }) => (
-  <div className={cn("flex items-center gap-2", className)}>
+  <div className={cn("flex items-center justify-center gap-2 h-full", className)}>
     {children}
   </div>
 );
