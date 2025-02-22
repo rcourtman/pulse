@@ -1,7 +1,32 @@
+# Logs
+logs
+*.log
+.log*
+*-audit.json
+
+# Environment and credentials
+.env
+.env.*
+*.env
+credentials.json
+config.local.js
+
+# Dependencies
 node_modules/
 dist/
-.env
+build/
+
+# OS files
 .DS_Store
-*.log
-.env
-logs/*
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
