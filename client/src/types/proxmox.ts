@@ -29,6 +29,7 @@ export interface ProxmoxNode {
   status?: 'online' | 'offline' | 'error';
   lastSeen?: string;   // ISO timestamp
   metrics?: NodeMetrics;
+  nodeName?: string;   // Add this field
 }
 
 export interface NodeState {

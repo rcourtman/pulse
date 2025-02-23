@@ -1,6 +1,7 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import type { Socket } from 'socket.io-client';
+import io from 'socket.io-client';
 
 interface WebSocketContextValue {
   socket: Socket | null;
@@ -14,10 +15,25 @@ interface WebSocketContextValue {
 const WebSocketContext = createContext<WebSocketContextValue | null>(null);
 
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const ws = useWebSocket();
+  const [socket, setSocket] = useState<Socket | null>(null);
+
+  console.log('WebSocketProvider rendering', { socket }); // Add debug log
+
+  useEffect(() => {
+    try {
+      const newSocket = io('http://localhost:3000');
+      setSocket(newSocket);
+
+      return () => {
+        newSocket.close();
+      };
+    } catch (error) {
+      console.error('Error initializing WebSocket:', error);
+    }
+  }, []);
 
   return (
-    <WebSocketContext.Provider value={ws}>
+    <WebSocketContext.Provider value={{ socket }}>
       {children}
     </WebSocketContext.Provider>
   );

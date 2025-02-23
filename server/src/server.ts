@@ -2,38 +2,27 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import winston from 'winston';
 import NodeCache from 'node-cache';
 import dotenv from 'dotenv';
 import proxmoxRoutes from './routes/proxmox.routes';
-import { NodeMonitor } from './services/nodeMonitor';
+import { initMonitor } from './services/monitorService';
+import { logger } from './utils/logger';
 
 // Load environment variables
 dotenv.config();
 
-// Initialize logger
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
-});
-
 // Initialize cache
 const cache = new NodeCache({ stdTTL: 100, checkperiod: 120 });
+
+// Get allowed origins from environment variables with a safe default
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
 
 // Create Express app
 const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://192.168.0.130:5173'],
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -45,36 +34,42 @@ app.use(express.json());
 // Create HTTP server
 const httpServer = createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with matching CORS config
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:5173', 'http://192.168.0.130:5173'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
-// After initializing Socket.IO
-const nodeMonitor = new NodeMonitor(io);
+// Initialize the monitor and store the instance
+const monitor = initMonitor(io);
+if (!monitor) {
+  throw new Error('Failed to initialize monitor');
+}
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   logger.info(`Client connected: ${socket.id}`);
 
   socket.on('subscribeToNode', (nodeId: string) => {
-    logger.info(`Client ${socket.id} subscribed to node ${nodeId}`);
-    nodeMonitor.subscribe(nodeId, socket.id);
+    logger.info(`Client ${socket.id} subscribing to node ${nodeId}`);
+    monitor.subscribe(nodeId, socket.id);
   });
 
   socket.on('unsubscribeFromNode', (nodeId: string) => {
-    logger.info(`Client ${socket.id} unsubscribed from node ${nodeId}`);
-    nodeMonitor.unsubscribe(nodeId, socket.id);
+    logger.info(`Client ${socket.id} unsubscribing from node ${nodeId}`);
+    monitor.unsubscribe(nodeId, socket.id);
   });
 
   socket.on('disconnect', () => {
     logger.info(`Client disconnected: ${socket.id}`);
-    // Clean up any subscriptions
-    // TODO: Track subscriptions to clean up
+    // TODO: Clean up subscriptions for this socket
+  });
+
+  socket.on('error', (error) => {
+    logger.error(`Socket error for client ${socket.id}:`, error);
   });
 });
 
@@ -108,5 +103,5 @@ httpServer.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
 });
 
-// Export nodeMonitor
-export { app, io, logger, cache, nodeMonitor };
+// Export app and other utilities, but not monitor
+export { app, io, logger, cache };

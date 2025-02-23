@@ -10,6 +10,10 @@ const NodeDetails: React.FC = () => {
   const node = nodeId ? state.nodes[nodeId] : null;
   const { socket } = useWebSocketContext();
   const [metrics, setMetrics] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Use the node's actual nodeName instead of assuming 'pve'
+  const nodeName = node?.nodeName || nodeId;
 
   useEffect(() => {
     if (!node) {
@@ -18,20 +22,26 @@ const NodeDetails: React.FC = () => {
   }, [node, navigate]);
 
   useEffect(() => {
-    if (!socket || !nodeId) return;
+    if (!socket || !nodeId) {
+      console.log('No socket or nodeId available');
+      return;
+    }
 
-    console.log('Subscribing to node:', nodeId);
-    socket.emit('subscribeToNode', nodeId);
+    console.log(`Subscribing to node: ${nodeName}`);
+    socket.emit('subscribeToNode', nodeName);
+    setIsLoading(true);
 
     const handleStatus = (data: any) => {
       console.log('Received node status:', data);
-      if (data.nodeId === nodeId) {
+      if (data.nodeId === nodeName) {
+        setIsLoading(false);
         if (data.metrics) {
+          console.log('Setting metrics:', data.metrics);
           setMetrics(data.metrics);
         }
         dispatch({
           type: 'UPDATE_NODE_STATUS',
-          payload: { id: nodeId, status: data.status }
+          payload: { id: nodeName, status: data.status }
         });
       }
     };
@@ -39,11 +49,11 @@ const NodeDetails: React.FC = () => {
     socket.on('nodeStatus', handleStatus);
 
     return () => {
-      console.log('Unsubscribing from node:', nodeId);
+      console.log('Cleaning up node subscription:', nodeName);
       socket.off('nodeStatus', handleStatus);
-      socket.emit('unsubscribeFromNode', nodeId);
+      socket.emit('unsubscribeFromNode', nodeName);
     };
-  }, [socket, nodeId, dispatch]);
+  }, [socket, nodeId, nodeName, dispatch]);
 
   if (!node) {
     return null;
@@ -91,7 +101,12 @@ const NodeDetails: React.FC = () => {
         </div>
       </div>
 
-      {metrics && (
+      {isLoading ? (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Metrics</h3>
+          <p className="text-gray-600">Loading metrics...</p>
+        </div>
+      ) : metrics ? (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Metrics</h3>
           <div className="grid grid-cols-2 gap-4">
@@ -114,6 +129,11 @@ const NodeDetails: React.FC = () => {
               <p className="font-medium">{metrics.version}</p>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Metrics</h3>
+          <p className="text-gray-600">No metrics available</p>
         </div>
       )}
     </div>

@@ -1,56 +1,93 @@
 import { ProxmoxService } from './proxmox';
 import { Server } from 'socket.io';
-import { logger } from '../server';
+import { logger } from '../utils/logger';
+
+interface MonitoredNode {
+  id: string;
+  host: string;
+  tokenId: string;
+  tokenSecret: string;
+  nodeName: string;
+  service?: ProxmoxService;
+  // ... other fields ...
+}
 
 export class NodeMonitor {
-  private nodes: Map<string, {
-    service: ProxmoxService;
-    subscribers: Set<string>;
-    interval: NodeJS.Timeout;
-  }> = new Map();
+  private nodes: Map<string, MonitoredNode> = new Map();
 
-  constructor(private io: Server) {}
+  constructor(private io: Server) {
+    logger.info('NodeMonitor initialized');
+  }
 
-  addNode(nodeId: string, service: ProxmoxService) {
-    if (this.nodes.has(nodeId)) {
+  addNode(node: MonitoredNode) {
+    logger.info(`Adding node to monitor: ${node.id}`);
+    
+    if (this.nodes.has(node.id)) {
+      logger.info(`Node ${node.id} already being monitored`);
       return;
     }
 
-    this.nodes.set(nodeId, {
-      service,
-      subscribers: new Set(),
-      interval: setInterval(() => this.checkNodeStatus(nodeId), 30000) // Check every 30 seconds
+    // Create ProxmoxService instance for this node
+    const service = new ProxmoxService({
+      host: node.host,
+      tokenId: node.tokenId,
+      tokenSecret: node.tokenSecret,
+      node: node.nodeName
     });
 
+    // Store node with service
+    this.nodes.set(node.id, {
+      ...node,
+      service
+    });
+
+    logger.info(`Node ${node.id} added to monitor. Current nodes: ${this.nodes.size}`);
+    
     // Initial check
-    this.checkNodeStatus(nodeId);
+    this.checkNodeStatus(node.id);
   }
 
   removeNode(nodeId: string) {
     const node = this.nodes.get(nodeId);
     if (node) {
-      clearInterval(node.interval);
       this.nodes.delete(nodeId);
     }
   }
 
   subscribe(nodeId: string, socketId: string) {
+    logger.info(`Socket ${socketId} subscribing to node ${nodeId}`);
+    
     const node = this.nodes.get(nodeId);
     if (node) {
-      node.subscribers.add(socketId);
+      logger.info(`Subscription successful. Current subscribers for node ${nodeId}: ${this.nodes.size}`);
+      
+      // Do an immediate status check for this subscriber
+      this.checkNodeStatus(nodeId);
+    } else {
+      logger.warn(`Attempted to subscribe to unknown node: ${nodeId}`);
     }
   }
 
   unsubscribe(nodeId: string, socketId: string) {
+    logger.info(`Socket ${socketId} unsubscribing from node ${nodeId}`);
+    
     const node = this.nodes.get(nodeId);
     if (node) {
-      node.subscribers.delete(socketId);
+      logger.info(`Unsubscribed. Remaining subscribers for node ${nodeId}: ${this.nodes.size}`);
     }
   }
 
   private async checkNodeStatus(nodeId: string) {
     const node = this.nodes.get(nodeId);
-    if (!node) return;
+    if (!node || !node.service) {
+      logger.warn(`Attempted to check status of unknown node: ${nodeId}`);
+      return;
+    }
+
+    if (this.nodes.size === 0) {
+      logger.debug(`Skipping status check - no nodes`);
+      return;
+    }
 
     try {
       logger.info(`Checking status for node ${nodeId}`);
@@ -72,9 +109,10 @@ export class NodeMonitor {
       };
 
       // Emit to all subscribers
-      node.subscribers.forEach(socketId => {
-        this.io.to(socketId).emit('nodeStatus', {
-          nodeId,
+      this.nodes.forEach(node => {
+        logger.info(`Emitting status to subscriber ${node.id}`);
+        this.io.to(node.id).emit('nodeStatus', {
+          nodeId: node.id,
           status: 'online',
           metrics
         });
@@ -82,16 +120,20 @@ export class NodeMonitor {
 
     } catch (error) {
       logger.error(`Failed to check node ${nodeId} status:`, {
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       });
 
-      // Emit error status to subscribers
-      node.subscribers.forEach(socketId => {
-        this.io.to(socketId).emit('nodeStatus', {
-          nodeId,
+      this.nodes.forEach(node => {
+        this.io.to(node.id).emit('nodeStatus', {
+          nodeId: node.id,
           status: 'error'
         });
       });
     }
+  }
+
+  getNode(id: string): MonitoredNode | undefined {
+    return this.nodes.get(id);
   }
 } 

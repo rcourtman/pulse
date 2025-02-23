@@ -22,6 +22,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7"
   }
 }
