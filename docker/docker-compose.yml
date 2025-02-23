@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   client:
@@ -32,3 +30,7 @@ services:
       - PORT=3000
     networks:
       - app-network
+
+networks:
+  app-network:
+    driver: bridge
