@@ -1,22 +1,28 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import type { ProxmoxNode, NodeState } from '../types/proxmox';
-import { useWebSocketContext } from './WebSocketContext';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+
+interface Node {
+  id: string;
+  name?: string;
+  host: string;
+  tokenId: string;
+  status?: 'online' | 'offline' | 'error';
+  metrics?: any;
+}
+
+interface NodeState {
+  nodes: Record<string, Node>;
+}
 
 type NodeAction = 
-  | { type: 'ADD_NODE'; payload: ProxmoxNode }
+  | { type: 'ADD_NODE'; payload: Node }
   | { type: 'REMOVE_NODE'; payload: string }
-  | { type: 'UPDATE_NODE_STATUS'; payload: { id: string; status: ProxmoxNode['status'] } }
-  | { type: 'SELECT_NODE'; payload: string }
-  | { type: 'UPDATE_NODE'; payload: { id: string; node: ProxmoxNode } };
-
-const STORAGE_KEY = 'pulse_nodes';
+  | { type: 'UPDATE_NODE'; payload: { id: string; name?: string; host?: string; tokenId?: string; status: string; metrics?: any } };
 
 const initialState: NodeState = {
-  nodes: {},
-  selectedNode: undefined
+  nodes: {}
 };
 
-const nodeReducer = (state: NodeState, action: NodeAction): NodeState => {
+function nodeReducer(state: NodeState, action: NodeAction): NodeState {
   switch (action.type) {
     case 'ADD_NODE':
       return {
@@ -30,24 +36,7 @@ const nodeReducer = (state: NodeState, action: NodeAction): NodeState => {
       const { [action.payload]: removed, ...remainingNodes } = state.nodes;
       return {
         ...state,
-        nodes: remainingNodes,
-        selectedNode: state.selectedNode === action.payload ? undefined : state.selectedNode
-      };
-    case 'UPDATE_NODE_STATUS':
-      return {
-        ...state,
-        nodes: {
-          ...state.nodes,
-          [action.payload.id]: {
-            ...state.nodes[action.payload.id],
-            status: action.payload.status
-          }
-        }
-      };
-    case 'SELECT_NODE':
-      return {
-        ...state,
-        selectedNode: action.payload
+        nodes: remainingNodes
       };
     case 'UPDATE_NODE':
       return {
@@ -56,14 +45,19 @@ const nodeReducer = (state: NodeState, action: NodeAction): NodeState => {
           ...state.nodes,
           [action.payload.id]: {
             ...state.nodes[action.payload.id],
-            ...action.payload.node
+            id: action.payload.id,
+            name: action.payload.name || state.nodes[action.payload.id]?.name,
+            host: action.payload.host || state.nodes[action.payload.id]?.host,
+            tokenId: action.payload.tokenId || state.nodes[action.payload.id]?.tokenId,
+            status: action.payload.status,
+            metrics: action.payload.metrics
           }
         }
       };
     default:
       return state;
   }
-};
+}
 
 const NodeContext = createContext<{
   state: NodeState;
@@ -72,71 +66,16 @@ const NodeContext = createContext<{
 
 export const NodeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(nodeReducer, initialState);
-  const { socket } = useWebSocketContext();
-  const [initializedNodes] = useState(new Set<string>());
 
-  console.log('NodeProvider rendering', { state });
-
+  // Clear localStorage on mount to ensure fresh start
   useEffect(() => {
-    try {
-      // Load saved nodes from localStorage
-      const savedNodes = localStorage.getItem('nodes');
-      if (savedNodes) {
-        const nodes = JSON.parse(savedNodes);
-        Object.entries(nodes).forEach(([id, node]) => {
-          dispatch({ type: 'ADD_NODE', payload: { id, ...node } });
-        });
-      }
-    } catch (error) {
-      console.error('Error loading saved nodes:', error);
-    }
+    localStorage.removeItem('nodes');
   }, []);
 
+  // Save nodes to localStorage when they change
   useEffect(() => {
-    if (!socket) return;
-
-    // When a node is added, fetch its available nodes
-    const fetchNodeInfo = async (nodeId: string) => {
-      // Skip if we've already initialized this node
-      if (initializedNodes.has(nodeId)) return;
-      
-      try {
-        const response = await fetch(`/api/proxmox/test/${nodeId}`);
-        const data = await response.json();
-        if (data.nodes && data.nodes.length > 0) {
-          // Update the node with the correct node name from the server
-          dispatch({
-            type: 'UPDATE_NODE',
-            payload: {
-              id: nodeId,
-              node: {
-                ...state.nodes[nodeId],
-                nodeName: data.nodes[0] // Use the first available node
-              }
-            }
-          });
-          // Mark this node as initialized
-          initializedNodes.add(nodeId);
-        }
-      } catch (error) {
-        console.error('Failed to fetch node info:', error);
-      }
-    };
-
-    // Only fetch info for nodes we haven't initialized yet
-    Object.keys(state.nodes)
-      .filter(nodeId => !initializedNodes.has(nodeId))
-      .forEach(nodeId => fetchNodeInfo(nodeId));
-  }, [socket, state.nodes, initializedNodes]);
-
-  // Save state changes to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (err) {
-      console.error('Failed to save nodes:', err);
-    }
-  }, [state]);
+    localStorage.setItem('nodes', JSON.stringify(state.nodes));
+  }, [state.nodes]);
 
   return (
     <NodeContext.Provider value={{ state, dispatch }}>

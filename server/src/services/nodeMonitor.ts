@@ -1,8 +1,9 @@
 import { ProxmoxService } from './proxmox';
 import { Server } from 'socket.io';
 import { logger } from '../utils/logger';
+import NodeCache from 'node-cache';
 
-interface MonitoredNode {
+export interface MonitoredNode {
   id: string;
   host: string;
   tokenId: string;
@@ -14,8 +15,13 @@ interface MonitoredNode {
 
 export class NodeMonitor {
   private nodes: Map<string, MonitoredNode> = new Map();
+  private subscriptions: Map<string, Set<string>> = new Map(); // nodeId -> Set of socketIds
+  private statusCache: NodeCache;
+  private io: Server;
 
-  constructor(private io: Server) {
+  constructor(io: Server) {
+    this.io = io;
+    this.statusCache = new NodeCache({ stdTTL: 5 }); // 5 seconds TTL
     logger.info('NodeMonitor initialized');
   }
 
@@ -55,26 +61,16 @@ export class NodeMonitor {
   }
 
   subscribe(nodeId: string, socketId: string) {
-    logger.info(`Socket ${socketId} subscribing to node ${nodeId}`);
-    
-    const node = this.nodes.get(nodeId);
-    if (node) {
-      logger.info(`Subscription successful. Current subscribers for node ${nodeId}: ${this.nodes.size}`);
-      
-      // Do an immediate status check for this subscriber
-      this.checkNodeStatus(nodeId);
-    } else {
-      logger.warn(`Attempted to subscribe to unknown node: ${nodeId}`);
+    if (!this.subscriptions.has(nodeId)) {
+      this.subscriptions.set(nodeId, new Set());
     }
+    this.subscriptions.get(nodeId)?.add(socketId);
+    logger.info(`Socket ${socketId} subscribed to node ${nodeId}`);
   }
 
   unsubscribe(nodeId: string, socketId: string) {
-    logger.info(`Socket ${socketId} unsubscribing from node ${nodeId}`);
-    
-    const node = this.nodes.get(nodeId);
-    if (node) {
-      logger.info(`Unsubscribed. Remaining subscribers for node ${nodeId}: ${this.nodes.size}`);
-    }
+    this.subscriptions.get(nodeId)?.delete(socketId);
+    logger.info(`Socket ${socketId} unsubscribed from node ${nodeId}`);
   }
 
   private async checkNodeStatus(nodeId: string) {
@@ -135,5 +131,15 @@ export class NodeMonitor {
 
   getNode(id: string): MonitoredNode | undefined {
     return this.nodes.get(id);
+  }
+
+  getAllNodes(): MonitoredNode[] {
+    return Array.from(this.nodes.values()).map(node => ({
+      id: node.id,
+      host: node.host,
+      tokenId: node.tokenId,
+      tokenSecret: node.tokenSecret,
+      nodeName: node.nodeName
+    }));
   }
 } 

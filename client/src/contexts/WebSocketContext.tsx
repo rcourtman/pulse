@@ -21,7 +21,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     try {
-      const newSocket = io('http://localhost:3000');
+      // Use environment variable or fallback to window.location
+      const serverUrl = import.meta.env.VITE_SERVER_URL || 
+        (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin);
+      
+      const newSocket = io(serverUrl);
       setSocket(newSocket);
 
       return () => {

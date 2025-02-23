@@ -1,9 +1,7 @@
 import express from 'express';
-import { validateToken } from '../controllers/proxmox.controller';
 import { ProxmoxService } from '../services/proxmox';
 import { logger } from '../utils/logger';
-import { monitor } from '../services/monitor.service';
-import crypto from 'crypto';
+import { getMonitor } from '../services/monitorService';
 
 const router = express.Router();
 
@@ -11,36 +9,34 @@ router.post('/validate', async (req, res) => {
   try {
     const { host, tokenId, tokenSecret } = req.body;
 
+    if (!host || !tokenId || !tokenSecret) {
+      return res.status(400).json({
+        error: 'Missing required credentials'
+      });
+    }
+
+    // Create service to validate connection
     const service = new ProxmoxService({
       host,
       tokenId,
-      tokenSecret,
-      node: 'minipc' // We'll get the actual node name after validation
+      tokenSecret
     });
 
-    // First validate the connection
+    // Validate connection and get node info
     await service.validate();
-
-    // Get the list of nodes to find the correct node name
     const nodes = await service.getNodes();
-    if (!nodes.length) {
+
+    if (!nodes || nodes.length === 0) {
       throw new Error('No nodes found on Proxmox server');
     }
 
-    // Generate a unique ID for this node
-    const nodeId = crypto.randomUUID();
-
-    // Add the node to the monitor with the correct node name
-    if (!monitor) {
-      throw new Error('Monitor not initialized');
-    }
-    
-    monitor.addNode({
-      id: nodeId,
+    // Add the node to our monitor
+    const monitor = getMonitor();
+    const nodeId = monitor.addNode({
       host,
       tokenId,
       tokenSecret,
-      nodeName: nodes[0] // Use the first available node name
+      node: nodes[0] // Use the first available node
     });
 
     logger.info('Token validation successful:', {
@@ -49,22 +45,15 @@ router.post('/validate', async (req, res) => {
       nodeId
     });
 
-    res.json({ 
-      isValid: true, 
+    res.json({
+      isValid: true,
       nodeId,
       nodeName: nodes[0]
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    logger.error('Test failed:', {
-      error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined
-    });
-
-    res.status(500).json({ 
-      error: errorMessage,
-      details: error instanceof Error ? error.stack : undefined
+    logger.error('Token validation failed:', error);
+    res.status(400).json({
+      error: error instanceof Error ? error.message : 'Validation failed'
     });
   }
 });
@@ -125,6 +114,18 @@ router.get('/test/:nodeId', async (req, res) => {
       error: errorMessage,
       details: error instanceof Error ? error.stack : undefined
     });
+  }
+});
+
+router.put('/nodes/:nodeId', async (req, res) => {
+  try {
+    const { nodeId } = req.params;
+    const { host, tokenId, tokenSecret } = req.body;
+    
+    const monitor = getMonitor();
+    // Update node implementation...
+  } catch (error) {
+    // Error handling...
   }
 });
 

@@ -39,14 +39,7 @@ const Onboarding: React.FC = () => {
     }
 
     try {
-      console.log('Submitting form data:', {
-        ...formData,
-        tokenSecret: '[REDACTED]'
-      });
-
-      // Use the full URL in development
-      const baseUrl = import.meta.env.DEV ? 'http://localhost:3000' : '';
-      const response = await fetch(`${baseUrl}/api/proxmox/validate`, {
+      const response = await fetch('/api/proxmox/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,28 +48,20 @@ const Onboarding: React.FC = () => {
         credentials: 'include'
       });
 
-      let data;
-      try {
-        const text = await response.text();
-        data = text ? JSON.parse(text) : {};
-        console.log('Server response:', data);
-      } catch (parseError) {
-        console.error('Failed to parse response:', parseError);
-        throw new Error('Invalid server response');
-      }
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to validate token');
       }
 
+      // Add the node to our local state
       dispatch({
         type: 'ADD_NODE',
         payload: {
           id: data.nodeId,
+          name: data.nodeName,
           host: formData.host,
           tokenId: formData.tokenId,
-          tokenSecret: formData.tokenSecret,
-          name: formData.node || `Node-${Object.keys(state.nodes).length + 1}`,
           status: 'online'
         }
       });
