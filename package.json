@@ -1,0 +1,22 @@
+{
+  "name": "pulse",
+  "version": "0.0.1",
+  "description": "Proxmox Monitoring Dashboard",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w client\" \"npm run dev -w server\"",
+    "build": "npm run build -ws",
+    "test": "npm run test -ws",
+    "lint": "npm run lint -ws"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

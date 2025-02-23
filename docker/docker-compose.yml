@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+
+  client:
+    build:
+      context: ../client
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../client:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://server:3000
+    networks:
+      - app-network
+    depends_on:
+      - server
+
+  server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../server:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - app-network
