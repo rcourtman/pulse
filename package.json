@@ -20,7 +20,10 @@
     "dev:mock:windows": "start-mock-dev.bat",
     "dev:docker:cleanup": "node scripts/dev-cleanup.js",
     "dev:docker": "npm run dev:docker:cleanup && docker compose -f docker-compose.dev.yml up --build",
-    "dev:docker:detached": "npm run dev:docker:cleanup && docker compose -f docker-compose.dev.yml up --build -d",
+    "prod:kill": "npx kill-port 7654",
+    "prod:docker:cleanup": "docker compose down && docker container prune -f",
+    "prod": "npm run prod:kill && npm run build && cd frontend && npm run build && cd .. && NODE_ENV=production node dist/server.js",
+    "prod:docker": "npm run prod:docker:cleanup && docker compose up --build",
     "screenshots": "./scripts/update-screenshots.sh",
     "generate:logos": "npm install canvas && node scripts/generate-logo-pngs.js && node scripts/generate-logo-with-text.js"
   },
