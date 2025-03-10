@@ -309,6 +309,22 @@ Pulse now uses environment-specific configuration files:
 
 When you run development or production scripts, the appropriate environment file is loaded automatically.
 
+#### Security Note
+
+⚠️ **IMPORTANT**: The environment files (`.env`, `.env.development`, `.env.production`) contain sensitive information such as API tokens and should NEVER be committed to the repository. Example files without sensitive data are provided (`.env.development.example`, `.env.production.example`) as templates.
+
+To set up your environment:
+
+1. Copy the example files to create your actual environment files:
+   ```bash
+   cp .env.development.example .env.development
+   cp .env.production.example .env.production
+   ```
+
+2. Edit the files to add your actual Proxmox node details and API tokens.
+
+The `.gitignore` file is configured to exclude these sensitive files from being committed.
+
 ### Docker Development Environment
 
 For a containerized development environment with hot-reloading:
