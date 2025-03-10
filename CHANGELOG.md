@@ -1,6 +1,9 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## [1.5.4] - 2024-03-26
+
+### Fixed
+- Fixed network rate calculation to properly handle Proxmox cumulative counters, resolving inaccurate network speed reporting
 
 ## [1.5.3] - 2025-03-10
 
