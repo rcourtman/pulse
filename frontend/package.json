@@ -1,6 +1,7 @@
 {
   "name": "pulse-frontend",
-  "version": "1.5.1",
+  "version": "1.5.3",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "dev": "vite",

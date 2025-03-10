@@ -1,6 +1,6 @@
 {
   "name": "pulse",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
