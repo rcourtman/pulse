@@ -105,7 +105,7 @@ export class MetricsService extends EventEmitter {
     const guestId = guest.id;
     const previousMetrics = this.lastMetrics.get(guestId);
     
-    // Calculate network rates
+    // Calculate network rates from cumulative counters
     const networkInRate = previousMetrics ? 
       this.calculateRate(guest.netin, previousMetrics.metrics.network?.in || 0, timestamp, previousMetrics.timestamp) : 
       0;
@@ -113,6 +113,17 @@ export class MetricsService extends EventEmitter {
     const networkOutRate = previousMetrics ? 
       this.calculateRate(guest.netout, previousMetrics.metrics.network?.out || 0, timestamp, previousMetrics.timestamp) : 
       0;
+
+    // Log raw values for debugging
+    this.logger.debug(`Network rates for ${guestId}:`, {
+      currentNetin: guest.netin,
+      previousNetin: previousMetrics?.metrics.network?.in,
+      currentNetout: guest.netout,
+      previousNetout: previousMetrics?.metrics.network?.out,
+      timeDiff: previousMetrics ? (timestamp - previousMetrics.timestamp) / 1000 : 0,
+      calculatedInRate: networkInRate,
+      calculatedOutRate: networkOutRate
+    });
     
     // Apply moving average to smooth network rates
     const smoothedNetworkRates = this.applyMovingAverage(guestId, networkInRate, networkOutRate);
@@ -133,8 +144,6 @@ export class MetricsService extends EventEmitter {
       guestId,
       type,
       metrics: {
-        // Proxmox returns CPU as a decimal (e.g., 0.0854 for 8.54%)
-        // We need to multiply by 100 to get the percentage
         cpu: guest.cpu !== undefined ? guest.cpu * 100 : (guest.cpus > 0 ? 0 : 0),
         memory: {
           total: guest.maxmem,
@@ -259,7 +268,8 @@ export class MetricsService extends EventEmitter {
   }
 
   /**
-   * Calculate rate between two values
+   * Calculate rate between two values over time
+   * Generic rate calculation for any cumulative counter
    */
   private calculateRate(currentValue: number, previousValue: number, currentTime: number, previousTime: number): number {
     if (currentTime === previousTime) return 0;
@@ -267,6 +277,19 @@ export class MetricsService extends EventEmitter {
     
     const timeDiff = (currentTime - previousTime) / 1000; // Convert to seconds
     return (currentValue - previousValue) / timeDiff;
+  }
+
+  /**
+   * Process network rate from Proxmox API values
+   * Proxmox returns network data already in bytes/second
+   */
+  private calculateNetworkRate(currentValue: number, previousValue: number, currentTime: number, previousTime: number): number {
+    // Proxmox already returns the rate in bytes/second, so we just need to return the current value
+    // We only calculate the rate if the value looks like a cumulative counter (very large number)
+    if (currentValue > 1e9) { // If value is greater than 1GB, it's probably a cumulative counter
+      return this.calculateRate(currentValue, previousValue, currentTime, previousTime);
+    }
+    return currentValue; // Otherwise, assume it's already a rate
   }
 
   /**
