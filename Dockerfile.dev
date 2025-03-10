@@ -22,8 +22,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 
-# Install backend dependencies
+# Install backend dependencies and global development tools
 RUN npm install
+RUN npm install -g ts-node-dev ts-node
 
 # Install frontend dependencies
 WORKDIR /app/frontend
@@ -45,12 +46,17 @@ RUN mkdir -p /app/logs
 
 # Create a script to start both servers
 RUN echo '#!/bin/sh\n\
-cd /app && npx ts-node-dev --respawn --transpile-only src/server.ts & \n\
+# Start mock server\n\
+ts-node src/mock/run-server.ts > /tmp/pulse-mock-server.log 2>&1 & \n\
+sleep 2\n\
+# Start backend server\n\
+ts-node-dev --respawn --transpile-only src/server.ts & \n\
+# Start frontend server\n\
 cd /app/frontend && npm run dev -- --port 3000 --host 0.0.0.0\n' > /app/start-dev.sh && \
 chmod +x /app/start-dev.sh
 
-# Expose ports for backend and frontend
-EXPOSE 7654 3000
+# Expose ports for backend, frontend, and mock server
+EXPOSE 7654 3000 7655
 
 # Start development servers with hot-reloading
 CMD ["/app/start-dev.sh"] 

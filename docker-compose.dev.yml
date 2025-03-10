@@ -14,6 +14,7 @@ services:
       - ./frontend/public:/app/frontend/public
       - ./frontend/index.html:/app/frontend/index.html
       - ./frontend/vite.config.js:/app/frontend/vite.config.js
+      - ./scripts:/app/scripts
       - ./logs:/app/logs
     env_file:
       - .env.development
@@ -25,11 +26,7 @@ services:
       - USE_MOCK_DATA=true
       - MOCK_DATA_ENABLED=true
       - DOCKER_CONTAINER=true
-    command: >
-      bash -c "ts-node src/mock/run-server.ts > /tmp/pulse-mock-server.log 2>&1 &
-      sleep 2 &&
-      npm run dev:server &
-      cd frontend && npm run dev -- --host 0.0.0.0 --port 3000"
+    command: /app/start-dev.sh
     logging:
       driver: "json-file"
       options:
