@@ -8,6 +8,7 @@ import { formatBytes, bytesToMB, mbToBytes } from '../../utils/format';
 import config from '../../config';
 import winston from 'winston';
 import { ProxmoxClientMethods } from './types';
+import { isNodeInCluster } from './cluster';
 
 // Define the class without the method implementations
 export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods {
@@ -101,6 +102,9 @@ export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods 
       );
     }
   }
+
+  // Add the isNodeInCluster method
+  isNodeInCluster = isNodeInCluster;
 
   // Method stubs that will be implemented by the prototype assignments
   async discoverNodeName(): Promise<string> { throw new Error('Not implemented'); }

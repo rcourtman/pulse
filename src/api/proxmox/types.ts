@@ -13,4 +13,5 @@ export interface ProxmoxClientMethods {
   subscribeToEvents(callback: (event: ProxmoxEvent) => void): Promise<() => void>;
   determineEventType(event: any): 'node' | 'vm' | 'container' | 'storage' | 'pool';
   setupEventPolling(): void;
+  isNodeInCluster(): Promise<{ isCluster: boolean; clusterName: string }>;
 } 
