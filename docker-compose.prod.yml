@@ -1,0 +1,23 @@
+services:
+  pulse-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pulse-app-prod
+    ports:
+      - "7654:7654"  # Production server
+    volumes:
+      - ./logs:/app/logs
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - USE_MOCK_DATA=false
+      - MOCK_DATA_ENABLED=false
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped 
