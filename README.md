@@ -81,6 +81,35 @@ PROXMOX_NODE_1_TOKEN_ID=root@pam!pulse
 PROXMOX_NODE_1_TOKEN_SECRET=your-token-secret
 ```
 
+### Proxmox Cluster Configuration
+
+Pulse now automatically detects if your nodes are part of a Proxmox cluster:
+
+```bash
+# Optional: Cluster Configuration
+# Cluster mode is now automatically detected, these settings are only needed to override the automatic detection
+# PROXMOX_CLUSTER_MODE=true
+# PROXMOX_CLUSTER_NAME=MyProxmoxCluster
+
+# Configure all nodes in your cluster
+PROXMOX_NODE_1_NAME=PVE01
+PROXMOX_NODE_1_HOST=https://pve01.domain.local:8006
+PROXMOX_NODE_1_TOKEN_ID=pulse-monitor@pve!pulse
+PROXMOX_NODE_1_TOKEN_SECRET=your-token-secret
+
+PROXMOX_NODE_2_NAME=PVE02
+PROXMOX_NODE_2_HOST=https://pve02.domain.local:8006
+# ... and so on for all nodes
+```
+
+When cluster mode is enabled, Pulse will:
+- Automatically detect VMs and containers that exist on multiple nodes
+- Use consistent IDs based on the VM/CT ID rather than the node
+- Prevent duplicate entries in the dashboard
+- Show the correct node where each VM/CT is currently running
+
+You can also enable cluster mode automatically by configuring multiple nodes - Pulse will detect this and enable cluster mode by default.
+
 ### Proxmox API Token Requirements
 
 Your Proxmox API token needs these permissions:
@@ -270,6 +299,16 @@ This will automatically detect your platform (Windows or Unix-like) and run the 
 - **Windows**: `npm run dev:windows` (runs start-dev.bat)
 - **Unix/Linux/macOS**: `npm run dev:unix` (runs start-dev.sh)
 
+### Environment Configuration
+
+Pulse now uses environment-specific configuration files:
+
+- `.env.development` - Used for development environments
+- `.env.production` - Used for production environments
+- `.env` - Default fallback configuration
+
+When you run development or production scripts, the appropriate environment file is loaded automatically.
+
 ### Docker Development Environment
 
 For a containerized development environment with hot-reloading:
@@ -280,6 +319,9 @@ npm run dev:docker
 
 # Or run in detached mode (background)
 npm run dev:docker:detached
+
+# Clean up Docker development environment
+npm run dev:docker:cleanup
 ```
 
 This Docker-based development setup:
@@ -290,11 +332,6 @@ This Docker-based development setup:
 - Provides a consistent development environment across different platforms
 - Automatically stops any running development processes before starting
 
-The cleanup process will:
-1. Stop any running Docker containers with "pulse" in their name
-2. Kill any processes using the development ports (7654, 7655, 3000, 9513)
-3. Ensure a clean start for the development environment
-
 ### Mock Data Development
 
 For development without a Proxmox server, you can use mock data:
@@ -302,14 +339,46 @@ For development without a Proxmox server, you can use mock data:
 ```bash
 # Start with mock data
 npm run dev:mock
+
+# Platform-specific mock data scripts
+npm run dev:mock:unix    # For Unix/Linux/macOS
+npm run dev:mock:windows # For Windows
 ```
 
-⚠️ **Warning**: The development scripts perform the following actions:
+The mock data environment automatically:
+- Sets `USE_MOCK_DATA=true` and `MOCK_DATA_ENABLED=true`
+- Loads mock Proxmox nodes and guests from the mock data files
+- Simulates real-time metrics and events
+
+### Production Deployment
+
+For production deployment, use:
+
+```bash
+# Start production server
+npm run prod
+
+# Platform-specific production scripts
+npm run prod:unix    # For Unix/Linux/macOS
+npm run prod:windows # For Windows
+
+# Docker production deployment
+npm run prod:docker
+npm run prod:docker:detached  # Run in background
+```
+
+The production scripts automatically:
+- Load configuration from `.env.production` if available
+- Disable mock data for production use
+- Build both backend and frontend
+- Start the optimized production server
+
+⚠️ **Warning**: The development and production scripts perform the following actions:
 - Stop any running Docker containers with "pulse" in their name (if Docker is installed)
 - Kill any running Node.js processes serving the application
 - Free ports 7654 and 3000 by terminating processes using them
-- Set NODE_ENV to development
-- Start both backend and frontend development servers
+- Set appropriate NODE_ENV values
+- Start the required servers based on the environment
 
 ### Development Architecture
 

@@ -1,5 +1,28 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Proxmox cluster support: Added automatic detection and handling of Proxmox clusters
+  - System now automatically detects if nodes are part of a cluster without manual configuration
+  - Manual configuration via PROXMOX_CLUSTER_MODE is still supported but optional
+- New configuration options: PROXMOX_CLUSTER_MODE and PROXMOX_CLUSTER_NAME (optional)
+- Prevents duplicate VMs/CTs from appearing when multiple nodes from the same cluster are configured
+- Mock cluster simulation for development and testing
+- New mock data environment variables: MOCK_CLUSTER_ENABLED and MOCK_CLUSTER_NAME (optional)
+- Updated documentation for mock data and cluster functionality
+- Environment-specific configuration files (.env.development and .env.production)
+- Improved development and production scripts for better cross-platform support
+- New start-prod.sh and start-prod.bat scripts for production deployment
+- Comprehensive mock data documentation in docs/MOCK_DATA.md
+- Enhanced Docker development environment with detached mode and cleanup commands
+
+### Changed
+- Refactored environment handling to use environment-specific configuration files
+- Improved development scripts to automatically detect and use the appropriate environment
+- Updated README with detailed information about environment configuration and scripts
+- Enhanced Docker development workflow with better cleanup and detached mode options
+
 ## [1.5.4] - 2024-03-26
 
 ### Fixed
