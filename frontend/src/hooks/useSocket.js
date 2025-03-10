@@ -11,11 +11,17 @@ const useSocket = (url) => {
   // In production, we can use window.location.origin since both frontend and backend are served from the same origin
   const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
   
+  // Get the current host and protocol
+  const currentHost = window.location.hostname;
+  const currentPort = window.location.port;
+  const currentProtocol = window.location.protocol;
+  
   // For development, we need to explicitly connect to the backend server
   // For production, we use the same origin that served the page
+  // This ensures we connect to the same host that served the page, which works in both host and bridge network modes
   const socketUrl = url || (isDevelopment 
-    ? 'http://localhost:7654' 
-    : (import.meta.env.VITE_API_URL || window.location.origin));
+    ? `http://${currentHost}:7654` 
+    : window.location.origin);
   
   // For debugging - log the connection URL and environment
   console.log('Environment:', isDevelopment ? 'development' : 'production');

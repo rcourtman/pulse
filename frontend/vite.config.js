@@ -11,7 +11,7 @@ export default defineConfig({
     proxy: {
       // Proxy WebSocket connections to the real backend
       '/socket.io': {
-        target: 'http://localhost:7654',  // Always connect to the backend server on port 7654
+        target: process.env.VITE_API_URL || 'http://localhost:7654',  // Use VITE_API_URL if set, otherwise default to localhost
         ws: true,
         changeOrigin: true,
         secure: false,
@@ -59,7 +59,7 @@ export default defineConfig({
       },
       // Proxy API requests to the real backend
       '/api': {
-        target: 'http://localhost:7654',  // Always connect to the backend server on port 7654
+        target: process.env.VITE_API_URL || 'http://localhost:7654',  // Use VITE_API_URL if set, otherwise default to localhost
         changeOrigin: true,
         configure: (proxy, _options) => {
           // Increase timeout values for Docker environments

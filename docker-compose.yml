@@ -17,6 +17,6 @@ services:
         max-size: "1m"
         max-file: "1"
     restart: unless-stopped
-    # Optional: Use host network mode for better network performance
-    # Uncomment the line below if you're still having connection issues
+    # Host network mode is commented out by default for better security
+    # Only enable if you're still experiencing WebSocket connection issues
     # network_mode: "host" 

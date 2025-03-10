@@ -2,12 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.5.1] - 2024-03-10
+## [1.5.3] - 2025-03-10
+
+### Security
+- Improved Docker networking security by making bridge networking (default) work properly with WebSockets
+- Removed host network mode as the default recommendation for better container isolation
+- Updated documentation to prioritize secure networking options
 
 ### Fixed
-- Fixed WebSocket connection issues in both development and production environments
-- Added comprehensive WebSocket troubleshooting guide
-- Improved error handling and debugging for WebSocket connections
+- Enhanced WebSocket connection handling to work correctly in bridge network mode
+- Improved hostname resolution for WebSocket connections
+
+## [1.5.2] - 2025-03-10
+
+### Fixed
+- WebSocket connection issues in Docker environments by using the browser's hostname instead of hardcoded localhost
+- Updated docker-compose.yml to use host network mode by default to fix connection issues
+- Added comprehensive troubleshooting guide for WebSocket connection problems
+
+## [1.5.1] - 2025-03-10
+
+### Added
+- Improved error handling for WebSocket connections
+- Better logging for connection issues
+
+### Fixed
+- Various minor UI bugs
+- Performance improvements for metric collection
 
 ## [1.5.0] - 2024-03-10
 

@@ -205,13 +205,27 @@ No. Pulse only communicates directly with your Proxmox servers using the API tok
 
 ### WebSocket Connection Issues
 
-If you see a "Connection error: websocket error" message when accessing the web interface, it's typically because the browser cannot establish a WebSocket connection to the server.
+If you see a "Connection error: websocket error" message, it's typically because the WebSocket connection can't be established. This is often due to Docker networking or reverse proxy configuration.
 
-#### Quick Fix:
-1. Remove or comment out the `VITE_API_URL` line from your `.env` file
-2. Restart the container: `docker restart pulse-app`
+#### Quick Fixes:
 
-For detailed troubleshooting steps, see [WebSocket Troubleshooting Guide](docs/websocket-troubleshooting.md).
+1. **Make sure you're using the latest version of Pulse:**
+   ```bash
+   docker pull rcourtman/pulse:latest
+   docker restart pulse-app
+   ```
+
+2. **Remove VITE_API_URL from your .env file** if you've set it.
+
+3. **Access Pulse directly by IP address** instead of using localhost or a domain name.
+
+4. **As a last resort, if other solutions don't work, you can use host network mode:**
+   ```bash
+   docker run -d --network host --env-file .env --name pulse-app rcourtman/pulse:latest
+   ```
+   Note: Host network mode has security implications as it gives the container full access to the host's network stack.
+
+For detailed troubleshooting steps, see our [WebSocket Troubleshooting Guide](docs/troubleshooting-websocket.md).
 
 ## 📋 Advanced Configuration
 
