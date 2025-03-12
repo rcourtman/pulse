@@ -6,12 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: process.env.DOCKER_CONTAINER ? 7654 : 3000,
+    port: 3000, // Use port 3000 for the frontend
     strictPort: true,  // This will make Vite fail instead of trying another port
     proxy: {
       // Proxy WebSocket connections to the real backend
       '/socket.io': {
-        target: process.env.VITE_API_URL || 'http://localhost:7654',  // Use VITE_API_URL if set, otherwise default to localhost
+        target: process.env.VITE_API_URL || 'http://localhost:7656',  // Proxy to the backend on 7656 during development
         ws: true,
         changeOrigin: true,
         secure: false,
@@ -59,7 +59,7 @@ export default defineConfig({
       },
       // Proxy API requests to the real backend
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:7654',  // Use VITE_API_URL if set, otherwise default to localhost
+        target: process.env.VITE_API_URL || 'http://localhost:7656',  // Proxy to the backend on 7656 during development
         changeOrigin: true,
         configure: (proxy, _options) => {
           // Increase timeout values for Docker environments

@@ -17,7 +17,8 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  useTheme
+  useTheme,
+  Button
 } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -29,12 +30,29 @@ import NetworkDisplay from './components/NetworkDisplay';
 import { AppThemeProvider, useThemeContext } from './context/ThemeContext';
 import useSocket from './hooks/useSocket';
 import { VERSION } from './utils/version';
+import { AnimatedLogoWithText } from './components/network/UIComponents';
+import { initializeStorage } from './utils/storageUtils';
 
 function AppContent() {
   const { darkMode, toggleDarkMode } = useThemeContext();
   const [selectedNode, setSelectedNode] = useState('all');
-  const { nodeData, guestData } = useSocket();
+  const { 
+    nodeData, 
+    guestData, 
+    isConnected
+  } = useSocket();
   const theme = useTheme();
+  
+  // Check if we're in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
+  
+  // Initialize storage and check for environment changes
+  useEffect(() => {
+    const wasCleared = initializeStorage();
+    if (wasCleared) {
+      console.log('Application data was cleared due to environment change');
+    }
+  }, []);
   
   // Transform the node data from the API into the format needed for the dropdown
   const availableNodes = React.useMemo(() => {
@@ -45,6 +63,8 @@ function AppContent() {
     
     // Add nodes from the API
     if (nodeData && nodeData.length > 0) {
+      console.log('Processing node data for dropdown:', nodeData);
+      
       // Count guests for each node
       const nodeCounts = {};
       
@@ -53,20 +73,32 @@ function AppContent() {
         // Extract node number from the id (e.g., "node-1" -> "node1")
         const nodeId = node.id.replace('-', '');
         nodeCounts[nodeId] = 0;
+        
+        // Also store the original ID for reference
+        nodeCounts[node.id] = 0;
       });
       
       // Count guests for each node
       if (guestData && guestData.length > 0) {
         guestData.forEach(guest => {
           if (guest.node) {
-            // Convert "node-1" to "node1" format
+            // Try both formats - with and without hyphen
             const normalizedNodeId = guest.node.replace('-', '');
+            
+            // Increment count for normalized ID if it exists
             if (nodeCounts[normalizedNodeId] !== undefined) {
               nodeCounts[normalizedNodeId]++;
+            }
+            
+            // Also increment count for original ID if it exists
+            if (nodeCounts[guest.node] !== undefined) {
+              nodeCounts[guest.node]++;
             }
           }
         });
       }
+      
+      console.log('Node counts:', nodeCounts);
       
       // Add nodes to the list with their counts
       nodeData.forEach(node => {
@@ -76,13 +108,16 @@ function AppContent() {
         // Add the node to the list
         nodes.push({
           id: nodeId,
+          originalId: node.id,
           name: node.name,
-          count: nodeCounts[nodeId] || 0
+          count: Math.max(nodeCounts[nodeId] || 0, nodeCounts[node.id] || 0)
         });
       });
       
-      // Update the count for "All Nodes" to show number of nodes instead of guests
-      nodes[0].count = nodeData.length;
+      // Update the count for "All Nodes" to show total number of guests
+      nodes[0].count = guestData ? guestData.length : 0;
+      
+      console.log('Available nodes for dropdown:', nodes);
     }
     
     return nodes;
@@ -99,6 +134,7 @@ function AppContent() {
       display: 'flex', 
       flexDirection: 'column', 
       minHeight: '100vh',
+      bgcolor: 'background.default'
     }}
     onClick={(e) => {
       // Only blur if clicking the container itself, not its children
@@ -108,106 +144,9 @@ function AppContent() {
     }}>
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography 
-            variant="h6" 
-            component="div" 
-            sx={{ 
-              flexGrow: 1, 
-              display: 'flex', 
-              alignItems: 'center',
-              fontWeight: 700,
-              letterSpacing: '0.03em',
-            }}
-          >
-            {/* Enhanced Logo - Made clickable to refresh page */}
-            <Box 
-              onClick={() => {
-                window.location.reload();
-                // Reset to default state if needed
-                setSelectedNode('all');
-              }}
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                cursor: 'pointer',
-                '&:hover': {
-                  opacity: 0.9,
-                },
-              }}
-            >
-              <Box 
-                component="span" 
-                sx={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  mr: 1.5,
-                  width: 34,
-                  height: 34,
-                  borderRadius: '50%',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Pulse Animation Rings */}
-                <Box 
-                  component="span" 
-                  sx={{ 
-                    position: 'absolute',
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '50%',
-                    border: '2px solid rgba(255,255,255,0.4)',
-                    animation: 'pulse 2s infinite',
-                    '@keyframes pulse': {
-                      '0%': {
-                        transform: 'scale(0.5)',
-                        opacity: 1,
-                      },
-                      '100%': {
-                        transform: 'scale(1.2)',
-                        opacity: 0,
-                      },
-                    },
-                  }}
-                />
-                {/* Generated Logo */}
-                <Box
-                  component="img"
-                  src="/logos/pulse-logo-256x256.png"
-                  alt="Pulse Logo"
-                  sx={{
-                    width: 24,
-                    height: 24,
-                    zIndex: 2,
-                  }}
-                />
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                Pulse
-                <Typography 
-                  component="span" 
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent triggering the parent onClick (page refresh)
-                    window.open('https://github.com/rcourtman/pulse', '_blank');
-                  }}
-                  sx={{ 
-                    ml: 1, 
-                    opacity: 0.8, 
-                    fontWeight: 400,
-                    fontSize: '0.7rem',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      opacity: 1,
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  v{VERSION}
-                </Typography>
-              </Box>
-            </Box>
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <AnimatedLogoWithText darkMode={darkMode} />
+          </Box>
           
           {/* Node Selection Dropdown */}
           <FormControl 
