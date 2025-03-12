@@ -147,13 +147,35 @@ export class NodeManager extends EventEmitter {
     
     this.logger.info(`Starting polling for node updates (interval: ${config.nodePollingIntervalMs}ms)`);
     
-    // Use the configurable polling interval from config
+    // Use a more efficient polling approach that staggers requests to avoid overwhelming the system
+    // and to make metrics more responsive
     this.pollingInterval = setInterval(async () => {
-      for (const nodeId of this.nodes.keys()) {
+      const nodeIds = Array.from(this.nodes.keys());
+      
+      // If we have multiple nodes, stagger their polling to avoid all nodes being polled at once
+      // This helps prevent unrealistic rate calculations due to timing issues
+      if (nodeIds.length > 1) {
+        // Process one node at a time with a small delay between each
+        for (let i = 0; i < nodeIds.length; i++) {
+          const nodeId = nodeIds[i];
+          try {
+            await this.refreshNodeData(nodeId);
+            
+            // Add a small delay between node polls to avoid timing issues
+            // but only if there are more nodes to process
+            if (i < nodeIds.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          } catch (error) {
+            this.logger.error(`Error polling node: ${nodeId}`, { error });
+          }
+        }
+      } else if (nodeIds.length === 1) {
+        // If we only have one node, just poll it directly
         try {
-          await this.refreshNodeData(nodeId);
+          await this.refreshNodeData(nodeIds[0]);
         } catch (error) {
-          this.logger.error(`Error polling node: ${nodeId}`, { error });
+          this.logger.error(`Error polling node: ${nodeIds[0]}`, { error });
         }
       }
     }, config.nodePollingIntervalMs);
