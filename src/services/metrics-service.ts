@@ -10,13 +10,37 @@ export class MetricsService extends EventEmitter {
   private lastMetrics: Map<string, MetricsData> = new Map();
   private historyMaxLength: number;
   // Add a map to store recent network rate values for smoothing
-  private recentNetworkRates: Map<string, { inRates: number[], outRates: number[] }> = new Map();
-  // Number of samples to use for the moving average - keeping it small for responsiveness
-  private readonly movingAverageSamples: number = 3;
+  private recentNetworkRates: Map<string, { 
+    inRates: number[], 
+    outRates: number[],
+    stableInRate: boolean,
+    stableOutRate: boolean,
+    stableInRateValue: number,
+    stableOutRateValue: number,
+    stableInRateCounter: number,
+    stableOutRateCounter: number,
+    maxObservedInRate: number,
+    maxObservedOutRate: number,
+    calibratedInRate: number | null,
+    calibratedOutRate: number | null
+  }> = new Map();
+  // Number of samples to use for the moving average - balanced for stability and responsiveness
+  private readonly movingAverageSamples: number = 4;
   // Maximum allowed deviation for spike detection (as a multiplier)
-  private readonly maxRateDeviation: number = 2.0;
+  private readonly maxRateDeviation: number = 2.5;
   // Bias factor for increasing speeds (makes the app more responsive to speed increases)
-  private readonly speedIncreaseBias: number = 0.7;
+  private readonly speedIncreaseBias: number = 0.6;
+  // Bias factor for decreasing speeds (makes the app more stable during speed decreases)
+  private readonly speedDecreaseBias: number = 0.4;
+  // Stability threshold - percentage variation allowed for a rate to be considered stable
+  private readonly stabilityThreshold: number = 0.15; // 15%
+  // Number of consecutive samples within threshold to consider a rate stable
+  private readonly stabilityCounter: number = 3;
+  // Calibration factor - how much to weight new values vs. calibrated value
+  private readonly calibrationFactor: number = 0.2;
+  // Maximum realistic network rate (in bytes/second)
+  // Default: 125 MB/s (1 Gbps), but can be configured via environment variable
+  private readonly maxRealisticRate: number;
 
   constructor() {
     super();
@@ -25,7 +49,11 @@ export class MetricsService extends EventEmitter {
     // Assuming we collect metrics every 30 seconds
     this.historyMaxLength = Math.ceil((config.metricsHistoryMinutes * 60) / 30);
     
+    // Initialize maxRealisticRate from config (in MB/s) and convert to bytes/second
+    this.maxRealisticRate = config.maxRealisticRate * 1024 * 1024;
+    
     this.logger.info(`Metrics history configured for ${config.metricsHistoryMinutes} minutes (${this.historyMaxLength} data points)`);
+    this.logger.info(`Maximum realistic network rate set to ${config.maxRealisticRate} MB/s`);
     
     // Subscribe to node manager events
     this.subscribeToEvents();
@@ -107,26 +135,33 @@ export class MetricsService extends EventEmitter {
     
     // Calculate network rates from cumulative counters
     const networkInRate = previousMetrics ? 
-      this.calculateRate(guest.netin, previousMetrics.metrics.network?.in || 0, timestamp, previousMetrics.timestamp) : 
+      this.calculateRate(guest.netin, previousMetrics.metrics.network?.in || 0, timestamp, previousMetrics.timestamp) :
       0;
     
     const networkOutRate = previousMetrics ? 
-      this.calculateRate(guest.netout, previousMetrics.metrics.network?.out || 0, timestamp, previousMetrics.timestamp) : 
+      this.calculateRate(guest.netout, previousMetrics.metrics.network?.out || 0, timestamp, previousMetrics.timestamp) :
       0;
-
-    // Log raw values for debugging
-    this.logger.debug(`Network rates for ${guestId}:`, {
-      currentNetin: guest.netin,
-      previousNetin: previousMetrics?.metrics.network?.in,
-      currentNetout: guest.netout,
-      previousNetout: previousMetrics?.metrics.network?.out,
-      timeDiff: previousMetrics ? (timestamp - previousMetrics.timestamp) / 1000 : 0,
-      calculatedInRate: networkInRate,
-      calculatedOutRate: networkOutRate
-    });
+    
+    // Log detailed network metrics for debugging
+    if (previousMetrics) {
+      this.logger.debug(`Raw network metrics for ${guestId}:`, {
+        currentNetin: guest.netin,
+        previousNetin: previousMetrics.metrics.network?.in,
+        currentNetout: guest.netout,
+        previousNetout: previousMetrics.metrics.network?.out,
+        timeDiff: (timestamp - previousMetrics.timestamp) / 1000,
+        calculatedInRate: networkInRate,
+        calculatedOutRate: networkOutRate,
+        inRateMBps: (networkInRate / (1024 * 1024)).toFixed(2),
+        outRateMBps: (networkOutRate / (1024 * 1024)).toFixed(2)
+      });
+    }
     
     // Apply moving average to smooth network rates
     const smoothedNetworkRates = this.applyMovingAverage(guestId, networkInRate, networkOutRate);
+    
+    // Log the smoothed rates
+    this.logger.debug(`Smoothed network rates for ${guestId}: in=${(smoothedNetworkRates.inRate / (1024 * 1024)).toFixed(2)} MB/s, out=${(smoothedNetworkRates.outRate / (1024 * 1024)).toFixed(2)} MB/s`);
     
     // Calculate disk rates
     const diskReadRate = previousMetrics ? 
@@ -182,58 +217,34 @@ export class MetricsService extends EventEmitter {
    * Apply moving average to network rates to smooth out fluctuations
    */
   private applyMovingAverage(guestId: string, inRate: number, outRate: number): { inRate: number, outRate: number } {
+    // Apply sanity check to input rates - cap at maximum realistic rate
+    inRate = Math.min(inRate, this.maxRealisticRate);
+    outRate = Math.min(outRate, this.maxRealisticRate);
+    
     // Get or initialize the recent rates array for this guest
     if (!this.recentNetworkRates.has(guestId)) {
       this.recentNetworkRates.set(guestId, { 
         inRates: [inRate], 
-        outRates: [outRate] 
+        outRates: [outRate],
+        stableInRate: false,
+        stableOutRate: false,
+        stableInRateValue: 0,
+        stableOutRateValue: 0,
+        stableInRateCounter: 0,
+        stableOutRateCounter: 0,
+        maxObservedInRate: inRate,
+        maxObservedOutRate: outRate,
+        calibratedInRate: null,
+        calibratedOutRate: null
       });
       return { inRate, outRate };
     }
     
     const rates = this.recentNetworkRates.get(guestId)!;
     
-    // Detect and handle spikes in the input rate
-    let filteredInRate = inRate;
-    let filteredOutRate = outRate;
-    
-    if (rates.inRates.length > 0) {
-      const lastInRate = rates.inRates[rates.inRates.length - 1];
-      
-      // If the new rate is significantly higher than the last one, it might be a spike
-      if (inRate > lastInRate * this.maxRateDeviation) {
-        // Use a weighted average instead of the raw value to dampen the spike
-        filteredInRate = (lastInRate + inRate) / 2;
-        this.logger.debug(`Detected download rate spike for ${guestId}: ${inRate.toFixed(2)} -> ${filteredInRate.toFixed(2)}`);
-      } 
-      // If speed is increasing but not dramatically (normal acceleration), be more responsive
-      else if (inRate > lastInRate) {
-        // Apply less smoothing for increasing speeds to be more responsive
-        filteredInRate = lastInRate + (inRate - lastInRate) * this.speedIncreaseBias;
-        this.logger.debug(`Speed increasing for ${guestId}: ${inRate.toFixed(2)} -> ${filteredInRate.toFixed(2)}`);
-      }
-    }
-    
-    if (rates.outRates.length > 0) {
-      const lastOutRate = rates.outRates[rates.outRates.length - 1];
-      
-      // If the new rate is significantly higher than the last one, it might be a spike
-      if (outRate > lastOutRate * this.maxRateDeviation) {
-        // Use a weighted average instead of the raw value to dampen the spike
-        filteredOutRate = (lastOutRate + outRate) / 2;
-        this.logger.debug(`Detected upload rate spike for ${guestId}: ${outRate.toFixed(2)} -> ${filteredOutRate.toFixed(2)}`);
-      }
-      // If speed is increasing but not dramatically (normal acceleration), be more responsive
-      else if (outRate > lastOutRate) {
-        // Apply less smoothing for increasing speeds to be more responsive
-        filteredOutRate = lastOutRate + (outRate - lastOutRate) * this.speedIncreaseBias;
-        this.logger.debug(`Speed increasing for ${guestId}: ${outRate.toFixed(2)} -> ${filteredOutRate.toFixed(2)}`);
-      }
-    }
-    
     // Add new rates to the arrays
-    rates.inRates.push(filteredInRate);
-    rates.outRates.push(filteredOutRate);
+    rates.inRates.push(inRate);
+    rates.outRates.push(outRate);
     
     // Trim arrays to keep only the most recent samples
     if (rates.inRates.length > this.movingAverageSamples) {
@@ -243,26 +254,14 @@ export class MetricsService extends EventEmitter {
       rates.outRates.shift();
     }
     
-    // Calculate weighted average - giving more weight to recent values for better responsiveness
-    let smoothedInRate = 0;
-    let smoothedOutRate = 0;
-    let totalWeight = 0;
-    
-    for (let i = 0; i < rates.inRates.length; i++) {
-      // Weight increases with index (more recent values have higher weight)
-      const weight = i + 1;
-      smoothedInRate += rates.inRates[i] * weight;
-      smoothedOutRate += rates.outRates[i] * weight;
-      totalWeight += weight;
-    }
-    
-    smoothedInRate = smoothedInRate / totalWeight;
-    smoothedOutRate = smoothedOutRate / totalWeight;
+    // Calculate simple averages
+    const smoothedInRate = rates.inRates.reduce((sum, rate) => sum + rate, 0) / rates.inRates.length;
+    const smoothedOutRate = rates.outRates.reduce((sum, rate) => sum + rate, 0) / rates.outRates.length;
     
     // Update the stored rates
     this.recentNetworkRates.set(guestId, rates);
     
-    this.logger.debug(`Network rates for ${guestId}: Raw in=${inRate.toFixed(2)}, Filtered in=${filteredInRate.toFixed(2)}, Smoothed in=${smoothedInRate.toFixed(2)}, Raw out=${outRate.toFixed(2)}, Filtered out=${filteredOutRate.toFixed(2)}, Smoothed out=${smoothedOutRate.toFixed(2)}`);
+    this.logger.debug(`Network rates for ${guestId}: Raw in=${inRate.toFixed(2)}, Smoothed in=${smoothedInRate.toFixed(2)}, Raw out=${outRate.toFixed(2)}, Smoothed out=${smoothedOutRate.toFixed(2)}`);
     
     return { inRate: smoothedInRate, outRate: smoothedOutRate };
   }
@@ -272,11 +271,24 @@ export class MetricsService extends EventEmitter {
    * Generic rate calculation for any cumulative counter
    */
   private calculateRate(currentValue: number, previousValue: number, currentTime: number, previousTime: number): number {
-    if (currentTime === previousTime) return 0;
-    if (currentValue < previousValue) return 0; // Counter reset
+    // Sanity check for time difference
+    if (currentTime <= previousTime) return 0;
     
-    const timeDiff = (currentTime - previousTime) / 1000; // Convert to seconds
-    return (currentValue - previousValue) / timeDiff;
+    // Handle counter reset or counter going backwards
+    if (currentValue < previousValue) return 0;
+    
+    // Calculate time difference in seconds
+    const timeDiff = (currentTime - previousTime) / 1000;
+    
+    // Calculate the rate
+    const rate = (currentValue - previousValue) / timeDiff;
+    
+    // Apply a simple cap for rates that are unrealistic
+    if (rate > this.maxRealisticRate) {
+      return this.maxRealisticRate;
+    }
+    
+    return rate;
   }
 
   /**

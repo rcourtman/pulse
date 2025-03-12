@@ -11,6 +11,7 @@ export interface NodeConfig {
   host: string;
   tokenId: string;
   tokenSecret: string;
+  autoDetectCluster?: boolean;
 }
 
 // Proxmox API response types
@@ -185,8 +186,12 @@ export interface AppConfig {
   logLevel: string;
   enableDevTools: boolean;
   metricsHistoryMinutes: number;
+  maxRealisticRate: number; // Maximum realistic network rate in MB/s
   ignoreSSLErrors: boolean;
   nodePollingIntervalMs: number;
   eventPollingIntervalMs: number;
   nodes: NodeConfig[];
+  clusterMode: boolean;
+  clusterName: string;
+  autoDetectCluster: boolean;
 } 

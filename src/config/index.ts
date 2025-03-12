@@ -8,6 +8,9 @@ dotenv.config();
  * Parse node configurations from environment variables
  */
 function parseNodeConfigs(): NodeConfig[] {
+  // Get the global auto-detect cluster setting
+  const autoDetectCluster = process.env.PROXMOX_AUTO_DETECT_CLUSTER !== 'false';
+
   // If mock data is enabled, return mock nodes instead of real ones
   if (process.env.USE_MOCK_DATA === 'true' || process.env.MOCK_DATA_ENABLED === 'true') {
     console.log('Mock data enabled. Using mock nodes instead of real Proxmox servers.');
@@ -15,61 +18,76 @@ function parseNodeConfigs(): NodeConfig[] {
       {
         id: 'node-1',
         name: 'pve-1',
-        host: 'http://localhost:7655',
+        host: 'http://localhost:7656',
         tokenId: 'mock-token',
-        tokenSecret: 'mock-secret'
+        tokenSecret: 'mock-secret',
+        autoDetectCluster
       },
       {
         id: 'node-2',
         name: 'pve-2',
-        host: 'http://localhost:7655',
+        host: 'http://localhost:7656',
         tokenId: 'mock-token',
-        tokenSecret: 'mock-secret'
+        tokenSecret: 'mock-secret',
+        autoDetectCluster
       },
       {
         id: 'node-3',
         name: 'pve-3',
-        host: 'http://localhost:7655',
+        host: 'http://localhost:7656',
         tokenId: 'mock-token',
-        tokenSecret: 'mock-secret'
+        tokenSecret: 'mock-secret',
+        autoDetectCluster
       }
     ];
   }
 
   const nodes: NodeConfig[] = [];
-  const nodePattern = /^PROXMOX_NODE_(\d+)_/;
   
-  // Get all environment variables that match the node pattern
-  const nodeEnvVars = Object.keys(process.env).filter(key => nodePattern.test(key));
+  // Parse the default node (no suffix)
+  const host = process.env.PROXMOX_HOST;
+  const nodeName = process.env.PROXMOX_NODE;
+  const tokenId = process.env.PROXMOX_TOKEN_ID;
+  const tokenSecret = process.env.PROXMOX_TOKEN_SECRET;
   
-  // Extract unique node numbers
-  const nodeNumbers = new Set<string>();
-  nodeEnvVars.forEach(key => {
-    const match = key.match(nodePattern);
-    if (match && match[1]) {
-      nodeNumbers.add(match[1]);
-    }
-  });
+  if (host && nodeName && tokenId && tokenSecret && 
+      tokenSecret !== 'your-token-secret-here' && 
+      tokenSecret !== 'your-token-secret') {
+    nodes.push({
+      id: 'node-1',
+      name: nodeName,
+      host,
+      tokenId,
+      tokenSecret,
+      autoDetectCluster
+    });
+  }
   
-  // Parse configuration for each node
-  Array.from(nodeNumbers).forEach(nodeNumber => {
-    const name = process.env[`PROXMOX_NODE_${nodeNumber}_NAME`];
-    const host = process.env[`PROXMOX_NODE_${nodeNumber}_HOST`];
-    const tokenId = process.env[`PROXMOX_NODE_${nodeNumber}_TOKEN_ID`];
-    const tokenSecret = process.env[`PROXMOX_NODE_${nodeNumber}_TOKEN_SECRET`];
+  // Parse additional nodes (with numeric suffix)
+  for (let i = 2; i <= 10; i++) {
+    const hostKey = `PROXMOX_HOST_${i}`;
+    const nodeNameKey = `PROXMOX_NODE_${i}`;
+    const tokenIdKey = `PROXMOX_TOKEN_ID_${i}`;
+    const tokenSecretKey = `PROXMOX_TOKEN_SECRET_${i}`;
     
-    if (name && host && tokenId && tokenSecret) {
+    const host = process.env[hostKey];
+    const nodeName = process.env[nodeNameKey];
+    const tokenId = process.env[tokenIdKey];
+    const tokenSecret = process.env[tokenSecretKey];
+    
+    if (host && nodeName && tokenId && tokenSecret && 
+        tokenSecret !== 'your-token-secret-here' && 
+        tokenSecret !== 'your-token-secret') {
       nodes.push({
-        id: `node-${nodeNumber}`,
-        name,
+        id: `node-${i}`,
+        name: nodeName,
         host,
         tokenId,
-        tokenSecret
+        tokenSecret,
+        autoDetectCluster
       });
-    } else {
-      console.warn(`Incomplete configuration for node ${nodeNumber}, skipping.`);
     }
-  });
+  }
   
   return nodes;
 }
@@ -91,6 +109,12 @@ function validateConfig(config: AppConfig): void {
   // Validate metrics history minutes
   if (isNaN(config.metricsHistoryMinutes) || config.metricsHistoryMinutes <= 0) {
     throw new Error(`Invalid metrics history minutes: ${config.metricsHistoryMinutes}. Must be a positive number.`);
+  }
+  
+  // Validate maximum realistic rate
+  if (isNaN(config.maxRealisticRate) || config.maxRealisticRate <= 0) {
+    console.warn(`Invalid maximum realistic rate: ${config.maxRealisticRate}. Using 125 MB/s as default.`);
+    config.maxRealisticRate = 125;
   }
   
   // Validate polling intervals
@@ -119,11 +143,24 @@ const config: AppConfig = {
   logLevel: process.env.LOG_LEVEL || 'info',
   enableDevTools: process.env.ENABLE_DEV_TOOLS === 'true',
   metricsHistoryMinutes: parseInt(process.env.METRICS_HISTORY_MINUTES || '60', 10),
-  ignoreSSLErrors: process.env.IGNORE_SSL_ERRORS === 'true',
+  // Maximum realistic network rate in MB/s (default: 125 MB/s = 1 Gbps)
+  maxRealisticRate: parseInt(process.env.METRICS_MAX_REALISTIC_RATE || '125', 10),
+  // Check multiple environment variables that could control SSL verification
+  ignoreSSLErrors: process.env.IGNORE_SSL_ERRORS === 'true' || 
+                   process.env.PROXMOX_REJECT_UNAUTHORIZED === 'false' ||
+                   process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ||
+                   process.env.HTTPS_REJECT_UNAUTHORIZED === 'false' ||
+                   process.env.PROXMOX_INSECURE === 'true' ||
+                   process.env.PROXMOX_VERIFY_SSL === 'false',
   // More responsive polling intervals - reduced for maximum responsiveness
-  nodePollingIntervalMs: parseInt(process.env.NODE_POLLING_INTERVAL_MS || '1000', 10),
+  nodePollingIntervalMs: parseInt(process.env.NODE_POLLING_INTERVAL_MS || '3000', 10),
   eventPollingIntervalMs: parseInt(process.env.EVENT_POLLING_INTERVAL_MS || '1000', 10),
-  nodes: parseNodeConfigs()
+  nodes: parseNodeConfigs(),
+  // Auto-detect cluster mode by default, but allow override via env var
+  clusterMode: process.env.PROXMOX_CLUSTER_MODE !== 'false', // Default to true unless explicitly set to false
+  clusterName: process.env.PROXMOX_CLUSTER_NAME || 'proxmox-cluster',
+  // Flag to indicate if cluster detection should be automatic
+  autoDetectCluster: process.env.PROXMOX_AUTO_DETECT_CLUSTER !== 'false' // Default to true unless explicitly set to false
 };
 
 // Validate the configuration
