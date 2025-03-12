@@ -24,10 +24,20 @@
 - New start-prod.sh and start-prod.bat scripts for production deployment
 - Comprehensive mock data documentation in docs/MOCK_DATA.md
 - Enhanced Docker development environment with detached mode and cleanup commands
+- Performance tuning documentation and optimized default settings:
+  - Increased polling intervals to reduce Proxmox server load (NODE_POLLING_INTERVAL_MS, EVENT_POLLING_INTERVAL_MS)
+  - Added API rate limiting settings (API_RATE_LIMIT_MS, API_TIMEOUT_MS, API_RETRY_DELAY_MS)
+  - Reduced memory usage with optimized metrics history (METRICS_HISTORY_MINUTES)
+  - New performance tuning guide in documentation
 
 ### Changed
 - Simplified environment configuration with a single `.env` file instead of multiple environment-specific files
 - Improved Docker configuration with dynamic environment variables
+- **IMPORTANT**: Default polling intervals have been increased to reduce load on Proxmox servers
+  - NODE_POLLING_INTERVAL_MS: 1000ms → 15000ms
+  - EVENT_POLLING_INTERVAL_MS: 1000ms → 5000ms
+  - METRICS_HISTORY_MINUTES: 60 → 30
+  - Users upgrading from previous versions should update their environment settings for optimal performance
 - Restructured project organization for better maintainability
 - Updated container name from `pulse-app` to `pulse`
 - Moved Docker files to `docker/` directory
