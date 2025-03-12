@@ -531,21 +531,28 @@ const updateMetrics = (socket: Socket) => {
       // Create more realistic CPU patterns - sometimes spikes, sometimes gradual changes
       let cpuDelta;
       if (Math.random() < 0.1) {
-        // 10% chance of a significant spike or drop
-        cpuDelta = randomFloatBetween(-15, 15);
-      } else if (Math.random() < 0.3) {
-        // 30% chance of a moderate change
+        // 10% chance of a significant spike or drop - reduce magnitude from ±15 to ±8
         cpuDelta = randomFloatBetween(-8, 8);
+      } else if (Math.random() < 0.3) {
+        // 30% chance of a moderate change - reduce magnitude from ±8 to ±5
+        cpuDelta = randomFloatBetween(-5, 5);
       } else {
-        // 60% chance of a small change
-        cpuDelta = randomFloatBetween(-3, 3);
+        // 60% chance of a small change - reduce magnitude from ±3 to ±2
+        cpuDelta = randomFloatBetween(-2, 2);
       }
       
       // Apply trend bias - if CPU is high, more likely to go down, if low, more likely to go up
       if (currentCpu > 70) {
-        cpuDelta -= 1; // Bias towards decreasing when high
+        cpuDelta -= 1.5; // Bias towards decreasing when high (increased from -1 to -1.5)
       } else if (currentCpu < 20) {
-        cpuDelta += 1; // Bias towards increasing when low
+        cpuDelta += 1.5; // Bias towards increasing when low (increased from +1 to +1.5)
+      }
+      
+      // During stress tests, CPU should stay high with smaller fluctuations
+      // This simulates a VM under constant load better
+      if (currentCpu > 80) {
+        // If CPU is already very high (likely stress test), keep it high with smaller variations
+        cpuDelta = randomFloatBetween(-3, 1); // More likely to stay high
       }
       
       const newCpu = Math.max(1, Math.min(100, currentCpu + cpuDelta));

@@ -456,7 +456,16 @@ export class MockClient extends EventEmitter {
         if (vm.cpu !== undefined) {
           // Generate more dynamic CPU values that fluctuate between 5% and 80%
           const randomFactor = Math.random() * 0.3 - 0.15; // Random value between -0.15 and 0.15
-          vm.cpu = Math.min(0.8, Math.max(0.05, vm.cpu + randomFactor));
+          
+          // If VM is under high load (simulating stress test), keep CPU high with less fluctuation
+          if (vm.cpu > 0.7) {  // Over 70% CPU
+            // Use smaller variations for high CPU usage to simulate more stable stress test
+            const highLoadRandomFactor = Math.random() * 0.1 - 0.02; // Bias toward staying high (-0.02 to 0.08)
+            vm.cpu = Math.min(0.95, Math.max(0.65, vm.cpu + highLoadRandomFactor));
+          } else {
+            // Normal variations for regular usage
+            vm.cpu = Math.min(0.8, Math.max(0.05, vm.cpu + randomFactor));
+          }
         }
         
         // Update memory with more variation
@@ -507,7 +516,16 @@ export class MockClient extends EventEmitter {
         if (container.cpu !== undefined) {
           // Generate more dynamic CPU values that fluctuate between 2% and 60%
           const randomFactor = Math.random() * 0.25 - 0.125; // Random value between -0.125 and 0.125
-          container.cpu = Math.min(0.6, Math.max(0.02, container.cpu + randomFactor));
+          
+          // If container is under high load (simulating stress test), keep CPU high with less fluctuation
+          if (container.cpu > 0.5) {  // Over 50% CPU
+            // Use smaller variations for high CPU usage to simulate more stable stress test
+            const highLoadRandomFactor = Math.random() * 0.08 - 0.01; // Bias toward staying high (-0.01 to 0.07)
+            container.cpu = Math.min(0.85, Math.max(0.45, container.cpu + highLoadRandomFactor));
+          } else {
+            // Normal variations for regular usage
+            container.cpu = Math.min(0.6, Math.max(0.02, container.cpu + randomFactor));
+          }
         }
         
         // Update memory with more variation

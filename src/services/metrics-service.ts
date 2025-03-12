@@ -24,8 +24,12 @@ export class MetricsService extends EventEmitter {
     calibratedInRate: number | null,
     calibratedOutRate: number | null
   }> = new Map();
+  // Add tracking for CPU rates to smooth them out
+  private recentCpuRates: Map<string, number[]> = new Map();
   // Number of samples to use for the moving average - balanced for stability and responsiveness
   private readonly movingAverageSamples: number = 4;
+  // Number of samples to use for CPU moving average - might need more samples due to CPU's higher volatility
+  private readonly cpuMovingAverageSamples: number = 6;
   // Maximum allowed deviation for spike detection (as a multiplier)
   private readonly maxRateDeviation: number = 2.5;
   // Bias factor for increasing speeds (makes the app more responsive to speed increases)
@@ -239,6 +243,9 @@ export class MetricsService extends EventEmitter {
       // Simulate CPU fluctuations (±5%)
       const cpuVariation = (Math.random() * 10 - 5); // Random value between -5 and 5
       cpuUsage = Math.max(1, Math.min(100, cpuUsage + cpuVariation));
+      
+      // Apply moving average smoothing to CPU metrics instead of using raw values with random variation
+      cpuUsage = this.applyCpuMovingAverage(guestId, cpuUsage);
       
       // Simulate memory fluctuations (±2%)
       const memoryVariationPercent = (Math.random() * 4 - 2) / 100; // Random value between -0.02 and 0.02
@@ -608,7 +615,46 @@ export class MetricsService extends EventEmitter {
   clearHistory(): void {
     this.metricsHistory.clear();
     this.recentNetworkRates.clear();
+    this.recentCpuRates.clear();
     this.logger.info('Metrics history cleared');
+  }
+
+  /**
+   * Apply moving average to CPU values to smooth out fluctuations
+   */
+  private applyCpuMovingAverage(guestId: string, cpuValue: number): number {
+    // Apply sanity check to input value
+    cpuValue = Math.max(0, Math.min(100, cpuValue));
+    
+    // Get or initialize the recent CPU values array for this guest
+    if (!this.recentCpuRates.has(guestId)) {
+      this.recentCpuRates.set(guestId, [cpuValue]);
+      return cpuValue;
+    }
+    
+    const cpuRates = this.recentCpuRates.get(guestId)!;
+    
+    // Add new CPU value to the array
+    cpuRates.push(cpuValue);
+    
+    // Trim array to keep only the most recent samples
+    if (cpuRates.length > this.cpuMovingAverageSamples) {
+      cpuRates.shift();
+    }
+    
+    // Calculate weighted average - more recent values have higher weight
+    let totalWeight = 0;
+    let weightedSum = 0;
+    
+    for (let i = 0; i < cpuRates.length; i++) {
+      // Weight increases with index (more recent values get higher weight)
+      const weight = i + 1;
+      weightedSum += cpuRates[i] * weight;
+      totalWeight += weight;
+    }
+    
+    // Return weighted average
+    return weightedSum / totalWeight;
   }
 }
 
