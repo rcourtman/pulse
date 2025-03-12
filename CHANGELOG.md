@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2024-03-12
+
+### Fixed
+- Reverted to the original environment variable naming format (PROXMOX_NODE_1_NAME, etc.)
+- Removed the new environment variable format introduced in v1.6.0
+- Improved backward compatibility for users upgrading from earlier versions
+
 ## [1.6.0] - 2024-03-12
 
 ### Added

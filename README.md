@@ -152,10 +152,10 @@ Pulse uses a single `.env` file for configuration with environment variables tha
 
 ```bash
 # Required: Proxmox Configuration
-PROXMOX_HOST=https://proxmox.local:8006
-PROXMOX_NODE=pve
-PROXMOX_TOKEN_ID=root@pam!pulse
-PROXMOX_TOKEN_SECRET=your-token-secret
+PROXMOX_NODE_1_NAME=pve
+PROXMOX_NODE_1_HOST=https://proxmox.local:8006
+PROXMOX_NODE_1_TOKEN_ID=root@pam!pulse
+PROXMOX_NODE_1_TOKEN_SECRET=your-token-secret
 
 # Optional: Application Configuration
 NODE_ENV=production  # or 'development' for development mode
@@ -184,10 +184,10 @@ If you prefer to configure Pulse manually:
 2. Edit the `.env` file with at least these settings:
    ```bash
    # Required: Proxmox Configuration
-   PROXMOX_HOST=https://proxmox.local:8006
-   PROXMOX_NODE=pve
-   PROXMOX_TOKEN_ID=root@pam!pulse
-   PROXMOX_TOKEN_SECRET=your-token-secret
+   PROXMOX_NODE_1_NAME=pve
+   PROXMOX_NODE_1_HOST=https://proxmox.local:8006
+   PROXMOX_NODE_1_TOKEN_ID=root@pam!pulse
+   PROXMOX_NODE_1_TOKEN_SECRET=your-token-secret
    ```
 
 ### Creating a Proxmox API Token
@@ -238,12 +238,12 @@ pveum user token list root@pam
 5. **Update your .env file**
    ```
    # If using root user (matching the quick command example)
-   PROXMOX_TOKEN_ID=root@pam!pulse
-   PROXMOX_TOKEN_SECRET=your-saved-token-value
+   PROXMOX_NODE_1_TOKEN_ID=root@pam!pulse
+   PROXMOX_NODE_1_TOKEN_SECRET=your-saved-token-value
    
    # OR if using a dedicated user (recommended for better security)
-   PROXMOX_TOKEN_ID=pulse-monitor@pam!pulse
-   PROXMOX_TOKEN_SECRET=your-saved-token-value
+   PROXMOX_NODE_1_TOKEN_ID=pulse-monitor@pam!pulse
+   PROXMOX_NODE_1_TOKEN_SECRET=your-saved-token-value
    ```
 
 ### Required Permissions
@@ -451,22 +451,22 @@ For multiple Proxmox nodes or advanced settings, add these to your `.env`:
 
 ```bash
 # Node 1 (default)
-PROXMOX_HOST=https://proxmox.local:8006
-PROXMOX_NODE=pve
-PROXMOX_TOKEN_ID=root@pam!pulse
-PROXMOX_TOKEN_SECRET=your-token-secret
+PROXMOX_NODE_1_NAME=pve
+PROXMOX_NODE_1_HOST=https://proxmox.local:8006
+PROXMOX_NODE_1_TOKEN_ID=root@pam!pulse
+PROXMOX_NODE_1_TOKEN_SECRET=your-token-secret
 
 # Node 2 (additional node)
-PROXMOX_HOST_2=https://proxmox2.local:8006
-PROXMOX_NODE_2=pve2
-PROXMOX_TOKEN_ID_2=root@pam!pulse
-PROXMOX_TOKEN_SECRET_2=your-token-secret
+PROXMOX_NODE_2_NAME=pve2
+PROXMOX_NODE_2_HOST=https://proxmox2.local:8006
+PROXMOX_NODE_2_TOKEN_ID=root@pam!pulse
+PROXMOX_NODE_2_TOKEN_SECRET=your-token-secret
 
 # Node 3 (additional node)
-PROXMOX_HOST_3=https://proxmox3.local:8006
-PROXMOX_NODE_3=pve3
-PROXMOX_TOKEN_ID_3=root@pam!pulse
-PROXMOX_TOKEN_SECRET_3=your-token-secret
+PROXMOX_NODE_3_NAME=pve3
+PROXMOX_NODE_3_HOST=https://proxmox3.local:8006
+PROXMOX_NODE_3_TOKEN_ID=root@pam!pulse
+PROXMOX_NODE_3_TOKEN_SECRET=your-token-secret
 
 # SSL Configuration
 IGNORE_SSL_ERRORS=true  # Set to true to disable SSL certificate verification

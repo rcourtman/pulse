@@ -44,31 +44,12 @@ function parseNodeConfigs(): NodeConfig[] {
 
   const nodes: NodeConfig[] = [];
   
-  // Parse the default node (no suffix)
-  const host = process.env.PROXMOX_HOST;
-  const nodeName = process.env.PROXMOX_NODE;
-  const tokenId = process.env.PROXMOX_TOKEN_ID;
-  const tokenSecret = process.env.PROXMOX_TOKEN_SECRET;
-  
-  if (host && nodeName && tokenId && tokenSecret && 
-      tokenSecret !== 'your-token-secret-here' && 
-      tokenSecret !== 'your-token-secret') {
-    nodes.push({
-      id: 'node-1',
-      name: nodeName,
-      host,
-      tokenId,
-      tokenSecret,
-      autoDetectCluster
-    });
-  }
-  
-  // Parse additional nodes (with numeric suffix)
-  for (let i = 2; i <= 10; i++) {
-    const hostKey = `PROXMOX_HOST_${i}`;
-    const nodeNameKey = `PROXMOX_NODE_${i}`;
-    const tokenIdKey = `PROXMOX_TOKEN_ID_${i}`;
-    const tokenSecretKey = `PROXMOX_TOKEN_SECRET_${i}`;
+  // Parse node configurations using standard format: PROXMOX_NODE_X_NAME, PROXMOX_NODE_X_HOST, etc.
+  for (let i = 1; i <= 10; i++) {
+    const hostKey = `PROXMOX_NODE_${i}_HOST`;
+    const nodeNameKey = `PROXMOX_NODE_${i}_NAME`;
+    const tokenIdKey = `PROXMOX_NODE_${i}_TOKEN_ID`;
+    const tokenSecretKey = `PROXMOX_NODE_${i}_TOKEN_SECRET`;
     
     const host = process.env[hostKey];
     const nodeName = process.env[nodeNameKey];
