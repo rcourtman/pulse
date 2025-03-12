@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger';
 import { NodeConfig, ProxmoxNodeStatus, ProxmoxVM, ProxmoxContainer, ProxmoxEvent } from '../types';
 import { vmTemplates, containerTemplates, getRandomVMStatus, getRandomContainerStatus } from '../mock/templates';
 import { customMockData } from '../mock/custom-data';
+import config from '../config';
 
 /**
  * Mock client for Proxmox API
@@ -12,12 +13,14 @@ import { customMockData } from '../mock/custom-data';
 export class MockClient extends EventEmitter {
   private config: NodeConfig;
   private logger = createLogger('MockClient');
-  private mockServerUrl = 'http://localhost:7655';
+  private mockServerUrl = `http://localhost:${process.env.MOCK_SERVER_PORT || '7656'}`;
   private socket: Socket | null = null;
   private connected = false;
   private pollingInterval: NodeJS.Timeout | null = null;
   private mockVMs: ProxmoxVM[] = [];
   private mockContainers: ProxmoxContainer[] = [];
+  private mockClusterEnabled: boolean = process.env.MOCK_CLUSTER_ENABLED !== 'false';
+  private mockClusterName: string = process.env.MOCK_CLUSTER_NAME || 'mock-cluster';
 
   constructor(config: NodeConfig) {
     super();
@@ -26,6 +29,23 @@ export class MockClient extends EventEmitter {
     
     // Generate mock VMs and containers based on node ID
     this.generateMockData();
+  }
+
+  /**
+   * Check if the node is part of a cluster (mock implementation)
+   * @returns Object containing isCluster (boolean) and clusterName (string)
+   */
+  async isNodeInCluster(): Promise<{ isCluster: boolean; clusterName: string }> {
+    // Simulate a delay to mimic network request
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    if (this.mockClusterEnabled) {
+      this.logger.info(`Mock node is part of cluster: ${this.mockClusterName}`);
+      return { isCluster: true, clusterName: this.mockClusterName };
+    } else {
+      this.logger.info('Mock node is not part of a cluster');
+      return { isCluster: false, clusterName: '' };
+    }
   }
 
   /**
@@ -53,13 +73,21 @@ export class MockClient extends EventEmitter {
         this.logger.info(`Processing guest: ${guest.id} (${guest.name}, type: ${guest.type})`);
         
         if (guest.type === 'vm') {
+          // Extract the VMID from the guest ID
+          const vmid = parseInt(guest.id.split('-').pop() || '100');
+          
+          // Generate the ID based on cluster mode
+          const id = this.mockClusterEnabled 
+            ? `${this.mockClusterName}-vm-${vmid}`
+            : `${nodeId}-vm-${vmid}`; // Use nodeId-vm-vmid format when cluster mode is disabled
+          
           // Create a VM from the custom data
           const vm: ProxmoxVM = {
-            id: guest.id,
+            id: id,
             name: guest.name,
             node: nodeId,
             status: guest.status as 'running' | 'stopped' | 'paused',
-            vmid: parseInt(guest.id.split('-').pop() || '100'),
+            vmid: vmid,
             type: 'qemu',
             cpus: 2 + Math.floor(Math.random() * 6),
             maxmem: guest.memory,
@@ -77,13 +105,21 @@ export class MockClient extends EventEmitter {
           
           this.mockVMs.push(vm);
         } else if (guest.type === 'ct') {
+          // Extract the VMID from the guest ID
+          const vmid = parseInt(guest.id.split('-').pop() || '200');
+          
+          // Generate the ID based on cluster mode
+          const id = this.mockClusterEnabled 
+            ? `${this.mockClusterName}-ct-${vmid}`
+            : `${nodeId}-ct-${vmid}`; // Use nodeId-ct-vmid format when cluster mode is disabled
+          
           // Create a container from the custom data
           const container: ProxmoxContainer = {
-            id: guest.id,
+            id: id,
             name: guest.name,
             node: nodeId,
             status: guest.status as 'running' | 'stopped' | 'paused' | 'unknown',
-            vmid: parseInt(guest.id.split('-').pop() || '200'),
+            vmid: vmid,
             type: 'lxc',
             cpus: 1 + Math.floor(Math.random() * 4),
             maxmem: guest.memory,
@@ -112,7 +148,12 @@ export class MockClient extends EventEmitter {
       this.logger.info(`Generating ${vmCount} mock VMs for node ${nodeName}`);
       
       for (let i = 0; i < vmCount; i++) {
-        const vmId = `${nodeId}-vm-${i + 1}`;
+        // Generate the VM ID based on cluster mode
+        const vmid = 100 + i;
+        const vmId = this.mockClusterEnabled
+          ? `${this.mockClusterName}-vm-${vmid}`
+          : `${nodeId}-vm-${i + 1}`;
+        
         const status = getRandomVMStatus();
         // Use a better name from the list, wrapping around if needed
         const template = vmTemplates[i % vmTemplates.length];
@@ -124,7 +165,7 @@ export class MockClient extends EventEmitter {
           name: `${nodeId}-${template.name}`, // Prefix with node ID to make unique
           node: nodeId,
           status: status,
-          vmid: 100 + i,
+          vmid: vmid,
           type: 'qemu',
           cpus: cpuCores,
           maxmem: memoryMB * 1024 * 1024,
@@ -148,7 +189,12 @@ export class MockClient extends EventEmitter {
       this.logger.info(`Generating ${containerCount} mock containers for node ${nodeName}`);
       
       for (let i = 0; i < containerCount; i++) {
-        const containerId = `${nodeId}-ct-${i + 1}`;
+        // Generate the container ID based on cluster mode
+        const vmid = 200 + i;
+        const containerId = this.mockClusterEnabled
+          ? `${this.mockClusterName}-ct-${vmid}`
+          : `${nodeId}-ct-${i + 1}`;
+        
         const status = getRandomContainerStatus();
         // Use a better name from the list, wrapping around if needed
         const template = containerTemplates[i % containerTemplates.length];
@@ -160,7 +206,7 @@ export class MockClient extends EventEmitter {
           name: `${nodeId}-${template.name}`, // Prefix with node ID to make unique
           node: nodeId,
           status: status,
-          vmid: 200 + i,
+          vmid: vmid,
           type: 'lxc',
           cpus: cpuCores,
           maxmem: memoryMB * 1024 * 1024,

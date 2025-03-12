@@ -31,7 +31,12 @@ const io = new Server(server, {
 });
 
 // Port for the mock server
-const PORT = 7655;
+const PORT = (global as any).MOCK_SERVER_PORT ? parseInt((global as any).MOCK_SERVER_PORT, 10) : 7656;
+// Host for the mock server (default to 0.0.0.0 to bind to all interfaces)
+const HOST = (global as any).HOST || process.env.MOCK_SERVER_HOST || '0.0.0.0';
+
+// Log the configuration
+logger.info(`Mock server configured to use host: ${HOST}, port: ${PORT}`);
 
 // Generate a random number between min and max
 const randomBetween = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1) + min);
@@ -74,11 +79,21 @@ interface MockNode {
 }
 
 // Store guest data - initialize with custom data
+// Use a nested map structure: Map<nodeId, Array<guest>>
 const guests = new Map();
 customMockData.nodes.forEach(node => {
-  node.guests.forEach(guest => {
-    guests.set(guest.id, { ...guest, nodeId: node.id });
-  });
+  // Create an array of guests for this node
+  const nodeGuests = node.guests.map(guest => ({
+    ...guest,
+    nodeId: node.id,
+    node: node.id // Add node property for compatibility
+  }));
+  
+  // Store the guests array for this node
+  guests.set(node.id, nodeGuests);
+  
+  // Log the number of guests for this node
+  logger.info(`Initialized ${nodeGuests.length} guests for node ${node.id}`);
 });
 
 // Store metrics data
@@ -169,26 +184,29 @@ const generateGuests = (): MockVM[] => {
 };
 
 // Generate metrics for guests
-const generateMetrics = (guestList: MockVM[]): MockMetric[] => {
+const generateMetrics = (nodeId: string, nodeGuests: MockVM[]): MockMetric[] => {
   const generatedMetrics: MockMetric[] = [];
   
-  guestList.forEach(guest => {
+  // Process each guest
+  nodeGuests.forEach((guest: MockVM) => {
     if (guest.status === 'running') {
-      // Handle different CPU structures
-      const cpuUsage = typeof guest.cpu === 'number' ? guest.cpu : guest.cpu.usage;
+      // Generate random metrics
+      const cpuUsage = typeof guest.cpu === 'number' ? guest.cpu * 100 : guest.cpu.usage * 100;
       
       // Handle different memory structures
       const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
-      const memoryUsed = typeof guest.memory === 'number' ? Math.floor(guest.memory * 0.7) : guest.memory.used;
+      const memoryUsed = typeof guest.memory === 'number' ? 
+        Math.floor(guest.memory * 0.7) : 
+        guest.memory.used;
       
-      // Default disk values if not present
+      // Handle disk
       const diskTotal = guest.disk?.total || 1073741824; // 1GB default
       const diskUsed = guest.disk?.used || 536870912; // 512MB default
       const diskPercentUsed = (diskUsed / diskTotal) * 100;
       
-      // Default network values if not present
-      const networkIn = guest.network?.throughput?.in || 1024;
-      const networkOut = guest.network?.throughput?.out || 512;
+      // Generate network metrics
+      const networkIn = randomFloatBetween(0.1, 50); // MB/s
+      const networkOut = randomFloatBetween(0.1, 20); // MB/s
       
       generatedMetrics.push({
         guestId: guest.id,
@@ -240,25 +258,71 @@ const sendInitialData = (socket: Socket) => {
   // Send node data
   socket.emit('nodes', { nodes: nodeArray });
   
-  // Send guest data
-  const guestArray = Array.from(guests.values());
+  // Get client info
+  const clientInfo = clients.get(socket.id);
   
-  // Process guest data to ensure it has the right format
-  const processedGuests = guestArray.map(guest => {
-    // Handle different memory structures
-    const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
+  if (clientInfo?.nodeId) {
+    // Client has registered for a specific node
+    const nodeId = clientInfo.nodeId;
     
-    return {
-      ...guest,
-      memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
-    };
-  });
-  
-  socket.emit('guests', { guests: processedGuests });
-  
-  // Generate and send metrics
-  const metricArray = generateMetrics(guestArray);
-  socket.emit('metrics', { metrics: metricArray });
+    // Get the node's guests
+    const nodeGuests = guests.get(nodeId) || [];
+    
+    // Process guest data to ensure it has the right format
+    const processedGuests = nodeGuests.map((guest: MockVM) => {
+      // Handle different memory structures
+      const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
+      
+      return {
+        ...guest,
+        memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
+      };
+    });
+    
+    // Send guest data for this node
+    socket.emit('guests', { guests: processedGuests });
+    
+    // Generate and send metrics for this node
+    const nodeMetrics = generateMetrics(nodeId, nodeGuests);
+    metrics.set(nodeId, nodeMetrics);
+    socket.emit('metrics', { metrics: nodeMetrics });
+    
+    logger.info(`Sent initial data for node ${nodeId}: ${nodeGuests.length} guests, ${nodeMetrics.length} metrics`);
+  } else {
+    // Client hasn't registered for a specific node, send all guests
+    // This is useful for the dashboard view
+    
+    // Collect all guests from all nodes
+    const allGuests = [];
+    const allMetrics = [];
+    
+    // Process each node
+    for (const [nodeId, nodeGuests] of guests.entries()) {
+      // Process guest data
+      const processedGuests = nodeGuests.map((guest: MockVM) => {
+        return {
+          ...guest,
+          memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
+        };
+      });
+      
+      // Add to all guests
+      allGuests.push(...processedGuests);
+      
+      // Generate metrics for this node
+      const nodeMetrics = generateMetrics(nodeId, nodeGuests);
+      metrics.set(nodeId, nodeMetrics);
+      allMetrics.push(...nodeMetrics);
+    }
+    
+    // Send all guest data
+    socket.emit('guests', { guests: allGuests });
+    
+    // Send all metrics
+    socket.emit('metrics', { metrics: allMetrics });
+    
+    logger.info(`Sent initial data for all nodes: ${allGuests.length} guests, ${allMetrics.length} metrics`);
+  }
 };
 
 // Function to update metrics for a socket
@@ -273,8 +337,8 @@ const updateMetrics = (socket: Socket) => {
     const nodeId = clientInfo.nodeId;
     
     // Get the node's guests
-    const nodeGuests = guests.get(nodeId);
-    if (!nodeGuests) {
+    const nodeGuests = guests.get(nodeId) || [];
+    if (!nodeGuests || nodeGuests.length === 0) {
       logger.warn(`No guests found for node ${nodeId}`);
       return;
     }
@@ -356,113 +420,114 @@ const updateMetrics = (socket: Socket) => {
     metrics.set(nodeId, updatedMetrics);
     
     // Send updated data
-    socket.emit('guests', nodeGuests);
-    socket.emit('metrics', updatedMetrics);
+    socket.emit('guests', { guests: nodeGuests });
+    socket.emit('metrics', { metrics: updatedMetrics });
   } else {
     // Client hasn't registered for a specific node, update all nodes
     // This is useful for the dashboard view
     
-    // Get all guests
-    const allGuests: MockVM[] = [];
-    const allNodeIds: string[] = [];
+    // Get all guests and metrics
+    const allGuests = [];
+    const allMetrics = [];
+    const updatedMetricsByNode = new Map();
     
-    // Collect guests from all nodes
-    customMockData.nodes.forEach(nodeData => {
-      const nodeId = nodeData.id;
-      allNodeIds.push(nodeId);
+    // Process each node
+    for (const [nodeId, nodeGuests] of guests.entries()) {
+      // Process guest data
+      const processedGuests = nodeGuests.map((guest: MockVM) => {
+        return {
+          ...guest,
+          memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
+        };
+      });
       
-      const nodeGuests = guests.get(nodeId) || [];
-      allGuests.push(...nodeGuests);
-    });
-    
-    // Get all metrics
-    const allMetrics: MockMetric[] = [];
-    allNodeIds.forEach(nodeId => {
-      const nodeMetrics = metrics.get(nodeId) || [];
-      allMetrics.push(...nodeMetrics);
-    });
-    
-    // Update metrics for running guests
-    const updatedMetrics = allMetrics.map((metric: MockMetric) => {
-      const guest = allGuests.find((g: MockVM) => g.id === metric.guestId);
-      if (!guest || guest.status !== 'running') {
-        return metric;
-      }
+      // Add to all guests
+      allGuests.push(...processedGuests);
       
-      // Update CPU usage (slight variation from previous value)
-      const currentCpu = metric.metrics.cpu;
-      const cpuDelta = randomFloatBetween(-5, 5);
-      const newCpu = Math.max(1, Math.min(100, currentCpu + cpuDelta));
+      // Get current metrics for this node
+      const currentMetrics = metrics.get(nodeId) || [];
       
-      // Update memory usage (slight variation from previous value)
-      const currentMemoryPercent = metric.metrics.memory.percentUsed;
-      const memoryDelta = randomFloatBetween(-2, 2);
-      const newMemoryPercent = Math.max(5, Math.min(95, currentMemoryPercent + memoryDelta));
-      
-      // Check if memory is a number or an object
-      const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
-      const newMemoryUsed = (memoryTotal * newMemoryPercent) / 100;
-      
-      // Update disk usage (slight variation from previous value)
-      const diskTotal = guest.disk?.total || 1073741824; // 1GB default
-      const diskUsed = guest.disk?.used || 536870912; // 512MB default
-      const currentDiskPercent = diskUsed / diskTotal * 100;
-      const diskDelta = randomFloatBetween(-1, 1);
-      const newDiskPercent = Math.max(1, Math.min(99, currentDiskPercent + diskDelta));
-      const newDiskUsed = (diskTotal * newDiskPercent) / 100;
-      
-      // Update network throughput
-      const newInRate = randomFloatBetween(0.1, 50);
-      const newOutRate = randomFloatBetween(0.1, 20);
-      
-      // Update history
-      const newCpuHistory = [...metric.history.cpu.slice(1), newCpu];
-      const newMemoryHistory = [...metric.history.memory.slice(1), newMemoryPercent];
-      const newDiskHistory = [...(metric.history.disk || Array(10).fill(0)), newDiskPercent].slice(-10);
-      
-      return {
-        ...metric,
-        timestamp: Date.now(),
-        metrics: {
-          ...metric.metrics,
-          cpu: newCpu,
-          memory: {
-            ...metric.metrics.memory,
-            used: newMemoryUsed,
-            percentUsed: newMemoryPercent
-          },
-          disk: {
-            ...metric.metrics.disk,
-            used: newDiskUsed,
-            percentUsed: newDiskPercent
-          },
-          network: {
-            ...metric.metrics.network,
-            inRate: newInRate,
-            outRate: newOutRate,
-            history: [...metric.metrics.network.history.slice(1), { in: newInRate, out: newOutRate }]
-          }
-        },
-        history: {
-          ...metric.history,
-          cpu: newCpuHistory,
-          memory: newMemoryHistory,
-          disk: newDiskHistory
+      // Update metrics for this node
+      const updatedMetrics = currentMetrics.map((metric: MockMetric) => {
+        const guest = nodeGuests.find((g: MockVM) => g.id === metric.guestId);
+        if (!guest || guest.status !== 'running') {
+          return metric;
         }
-      };
-    });
-    
-    // Update metrics for each node
-    allNodeIds.forEach(nodeId => {
-      const nodeGuests = guests.get(nodeId) || [];
-      const nodeGuestIds = nodeGuests.map((g: MockVM) => g.id);
-      const nodeMetrics = updatedMetrics.filter(m => nodeGuestIds.includes(m.guestId));
-      metrics.set(nodeId, nodeMetrics);
-    });
+        
+        // Update CPU usage (slight variation from previous value)
+        const currentCpu = metric.metrics.cpu;
+        const cpuDelta = randomFloatBetween(-5, 5);
+        const newCpu = Math.max(1, Math.min(100, currentCpu + cpuDelta));
+        
+        // Update memory usage (slight variation from previous value)
+        const currentMemoryPercent = metric.metrics.memory.percentUsed;
+        const memoryDelta = randomFloatBetween(-2, 2);
+        const newMemoryPercent = Math.max(5, Math.min(95, currentMemoryPercent + memoryDelta));
+        
+        // Check if memory is a number or an object
+        const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
+        const newMemoryUsed = (memoryTotal * newMemoryPercent) / 100;
+        
+        // Update disk usage (slight variation from previous value)
+        const diskTotal = guest.disk?.total || 1073741824; // 1GB default
+        const diskUsed = guest.disk?.used || 536870912; // 512MB default
+        const currentDiskPercent = diskUsed / diskTotal * 100;
+        const diskDelta = randomFloatBetween(-1, 1);
+        const newDiskPercent = Math.max(1, Math.min(99, currentDiskPercent + diskDelta));
+        const newDiskUsed = (diskTotal * newDiskPercent) / 100;
+        
+        // Update network throughput
+        const newInRate = randomFloatBetween(0.1, 50);
+        const newOutRate = randomFloatBetween(0.1, 20);
+        
+        // Update history
+        const newCpuHistory = [...metric.history.cpu.slice(1), newCpu];
+        const newMemoryHistory = [...metric.history.memory.slice(1), newMemoryPercent];
+        const newDiskHistory = [...(metric.history.disk || Array(10).fill(0)), newDiskPercent].slice(-10);
+        
+        return {
+          ...metric,
+          timestamp: Date.now(),
+          metrics: {
+            ...metric.metrics,
+            cpu: newCpu,
+            memory: {
+              ...metric.metrics.memory,
+              used: newMemoryUsed,
+              percentUsed: newMemoryPercent
+            },
+            disk: {
+              ...metric.metrics.disk,
+              used: newDiskUsed,
+              percentUsed: newDiskPercent
+            },
+            network: {
+              ...metric.metrics.network,
+              inRate: newInRate,
+              outRate: newOutRate,
+              history: [...metric.metrics.network.history.slice(1), { in: newInRate, out: newOutRate }]
+            }
+          },
+          history: {
+            ...metric.history,
+            cpu: newCpuHistory,
+            memory: newMemoryHistory,
+            disk: newDiskHistory
+          }
+        };
+      });
+      
+      // Store updated metrics for this node
+      metrics.set(nodeId, updatedMetrics);
+      updatedMetricsByNode.set(nodeId, updatedMetrics);
+      
+      // Add to all metrics
+      allMetrics.push(...updatedMetrics);
+    }
     
     // Send updated data
-    socket.emit('guests', allGuests);
-    socket.emit('metrics', updatedMetrics);
+    socket.emit('guests', { guests: allGuests });
+    socket.emit('metrics', { metrics: allMetrics });
   }
 };
 
@@ -488,8 +553,23 @@ io.on('connection', (socket) => {
   
   // Handle registration
   socket.on('register', (data) => {
-    logger.info(`Client registered: ${socket.id} for node ${data.nodeName}`);
-    clients.set(socket.id, { ...clients.get(socket.id), nodeId: data.nodeId, nodeName: data.nodeName });
+    const nodeId = data.nodeId || data.nodeName;
+    logger.info(`Client registered: ${socket.id} for node ${nodeId}`);
+    
+    // Store the node ID in the client info
+    clients.set(socket.id, { 
+      ...clients.get(socket.id), 
+      nodeId: nodeId, 
+      nodeName: data.nodeName 
+    });
+    
+    // Check if we have guests for this node
+    const nodeGuests = guests.get(nodeId);
+    if (!nodeGuests || nodeGuests.length === 0) {
+      logger.warn(`No guests found for registered node ${nodeId}. Available nodes: ${Array.from(guests.keys()).join(', ')}`);
+    } else {
+      logger.info(`Found ${nodeGuests.length} guests for node ${nodeId}`);
+    }
     
     // Resend data for this specific node
     sendInitialData(socket);
@@ -497,26 +577,46 @@ io.on('connection', (socket) => {
   
   // Handle VM updates
   socket.on('updateVMs', (data) => {
-    logger.info(`Received VM update from ${socket.id} for node ${data.nodeId}`);
-    const node = nodes.get(data.nodeId);
+    const nodeId = data.nodeId;
+    logger.info(`Received VM update from ${socket.id} for node ${nodeId}`);
+    
+    // Get the node's guests
+    const nodeGuests = guests.get(nodeId) || [];
+    
+    // Update VMs in the node's guests
+    const updatedVMs = data.vms || [];
+    logger.info(`Received ${updatedVMs.length} VMs for node ${nodeId}`);
+    
+    // Store the updated VMs
+    const node = nodes.get(nodeId);
     if (node) {
-      nodes.set(data.nodeId, { ...node, vms: data.vms });
+      nodes.set(nodeId, { ...node, vms: updatedVMs });
     }
   });
   
   // Handle container updates
   socket.on('updateContainers', (data) => {
-    logger.info(`Received container update from ${socket.id} for node ${data.nodeId}`);
-    const node = nodes.get(data.nodeId);
+    const nodeId = data.nodeId;
+    logger.info(`Received container update from ${socket.id} for node ${nodeId}`);
+    
+    // Get the node's guests
+    const nodeGuests = guests.get(nodeId) || [];
+    
+    // Update containers in the node's guests
+    const updatedContainers = data.containers || [];
+    logger.info(`Received ${updatedContainers.length} containers for node ${nodeId}`);
+    
+    // Store the updated containers
+    const node = nodes.get(nodeId);
     if (node) {
-      nodes.set(data.nodeId, { ...node, containers: data.containers });
+      nodes.set(nodeId, { ...node, containers: updatedContainers });
     }
   });
 });
 
 // Start the server
-server.listen(PORT, () => {
-  logger.info(`Mock data server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  logger.info(`Mock data server running on ${HOST}:${PORT}`);
 });
 
 // Export for testing

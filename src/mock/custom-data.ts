@@ -10,14 +10,14 @@ export const customMockData = {
   nodes: [
     {
       id: 'node-1',
-      name: 'pve-prod1',
+      name: 'MOCK-pve1',
       status: 'online',
       cpu: { usage: 0.72, cores: 32 },
       memory: { used: 103079215104, total: 137438953472 }, // 96GB used of 128GB
       guests: [
         { 
           id: '101', 
-          name: 'db-master', 
+          name: 'mock-db-master', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.65, 
@@ -26,7 +26,7 @@ export const customMockData = {
         },
         { 
           id: '104', 
-          name: 'web-prod1', 
+          name: 'mock-web1', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.28, 
@@ -35,7 +35,7 @@ export const customMockData = {
         },
         { 
           id: '107', 
-          name: 'web-prod2', 
+          name: 'mock-web2', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.31, 
@@ -44,7 +44,7 @@ export const customMockData = {
         },
         { 
           id: '110', 
-          name: 'redis-cache', 
+          name: 'mock-redis', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.22, 
@@ -53,7 +53,7 @@ export const customMockData = {
         },
         { 
           id: '115', 
-          name: 'mail-server', 
+          name: 'mock-mail', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.18, 
@@ -62,7 +62,7 @@ export const customMockData = {
         },
         { 
           id: '203', 
-          name: 'haproxy-lb1', 
+          name: 'mock-lb1', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.08, 
@@ -71,7 +71,7 @@ export const customMockData = {
         },
         { 
           id: '204', 
-          name: 'haproxy-lb2', 
+          name: 'mock-lb2', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.07, 
@@ -80,25 +80,43 @@ export const customMockData = {
         },
         { 
           id: '210', 
-          name: 'monitoring', 
+          name: 'mock-monitoring', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.12, 
           memory: 4294967296, // 4GB
           disk: { used: 32212254720, total: 53687091200 } // 30GB used of 50GB
+        },
+        { 
+          id: '999', 
+          name: 'mock-shared-vm', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.25, 
+          memory: 4294967296, // 4GB
+          disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
+        },
+        { 
+          id: '888', 
+          name: 'mock-shared-container', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.15, 
+          memory: 2147483648, // 2GB
+          disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }
       ]
     },
     {
       id: 'node-2',
-      name: 'pve-dev',
+      name: 'MOCK-pve2',
       status: 'online',
       cpu: { usage: 0.35, cores: 16 },
       memory: { used: 28991029248, total: 68719476736 }, // 27GB used of 64GB
       guests: [
         { 
           id: '121', 
-          name: 'dev-db', 
+          name: 'mock-dev-db', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.12, 
@@ -107,7 +125,7 @@ export const customMockData = {
         },
         { 
           id: '125', 
-          name: 'dev-web1', 
+          name: 'mock-dev-web1', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.08, 
@@ -116,7 +134,7 @@ export const customMockData = {
         },
         { 
           id: '126', 
-          name: 'dev-web2', 
+          name: 'mock-dev-web2', 
           type: 'vm', 
           status: 'stopped', 
           cpu: 0, 
@@ -125,7 +143,7 @@ export const customMockData = {
         },
         { 
           id: '130', 
-          name: 'test-api', 
+          name: 'mock-test-api', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.05, 
@@ -134,7 +152,7 @@ export const customMockData = {
         },
         { 
           id: '142', 
-          name: 'jenkins', 
+          name: 'mock-jenkins', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.25, 
@@ -143,7 +161,7 @@ export const customMockData = {
         },
         { 
           id: '220', 
-          name: 'dev-tools', 
+          name: 'mock-dev-tools', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.03, 
@@ -152,25 +170,43 @@ export const customMockData = {
         },
         { 
           id: '225', 
-          name: 'staging-proxy', 
+          name: 'mock-staging-proxy', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.02, 
           memory: 1073741824, // 1GB
           disk: { used: 2147483648, total: 10737418240 } // 2GB used of 10GB
+        },
+        { 
+          id: '999', 
+          name: 'mock-shared-vm', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.25, 
+          memory: 4294967296, // 4GB
+          disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
+        },
+        { 
+          id: '888', 
+          name: 'mock-shared-container', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.15, 
+          memory: 2147483648, // 2GB
+          disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }
       ]
     },
     {
       id: 'node-3',
-      name: 'lab-server',
+      name: 'MOCK-pve3',
       status: 'online',
       cpu: { usage: 0.22, cores: 8 },
       memory: { used: 12884901888, total: 34359738368 }, // 12GB used of 32GB
       guests: [
         { 
           id: '150', 
-          name: 'win10-test', 
+          name: 'mock-win10-test', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.15, 
@@ -179,7 +215,7 @@ export const customMockData = {
         },
         { 
           id: '151', 
-          name: 'ubuntu22-template', 
+          name: 'mock-ubuntu22-template', 
           type: 'vm', 
           status: 'stopped', 
           cpu: 0, 
@@ -188,7 +224,7 @@ export const customMockData = {
         },
         { 
           id: '155', 
-          name: 'debian11-template', 
+          name: 'mock-debian11-template', 
           type: 'vm', 
           status: 'stopped', 
           cpu: 0, 
@@ -197,7 +233,7 @@ export const customMockData = {
         },
         { 
           id: '180', 
-          name: 'game-server', 
+          name: 'mock-game-server', 
           type: 'vm', 
           status: 'paused', 
           cpu: 0, 
@@ -206,7 +242,7 @@ export const customMockData = {
         },
         { 
           id: '240', 
-          name: 'pihole-dns', 
+          name: 'mock-pihole-dns', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.01, 
@@ -215,7 +251,7 @@ export const customMockData = {
         },
         { 
           id: '245', 
-          name: 'home-automation', 
+          name: 'mock-home-automation', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.04, 
@@ -224,12 +260,30 @@ export const customMockData = {
         },
         { 
           id: '250', 
-          name: 'media-server', 
+          name: 'mock-media-server', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.08, 
           memory: 2147483648, // 2GB
           disk: { used: 536870912000, total: 1099511627776 } // 500GB used of 1TB
+        },
+        { 
+          id: '999', 
+          name: 'mock-shared-vm', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.25, 
+          memory: 4294967296, // 4GB
+          disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
+        },
+        { 
+          id: '888', 
+          name: 'mock-shared-container', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.15, 
+          memory: 2147483648, // 2GB
+          disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }
       ]
     }
