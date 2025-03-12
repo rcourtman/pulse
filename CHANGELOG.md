@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2024-03-12
+
 ### Added
 - New one-line installation command: `git clone https://github.com/rcourtman/pulse.git && cd pulse && npm run install:pulse`
 - Interactive installation script (`scripts/install.sh`) for guided setup
@@ -29,6 +31,9 @@
   - Added API rate limiting settings (API_RATE_LIMIT_MS, API_TIMEOUT_MS, API_RETRY_DELAY_MS)
   - Reduced memory usage with optimized metrics history (METRICS_HISTORY_MINUTES)
   - New performance tuning guide in documentation
+- Animated pulsing logo for better visual feedback
+- Detailed WebSocket troubleshooting guide for connection issues
+- Enhanced CPU modeling in simulation mode for more realistic testing
 
 ### Changed
 - Simplified environment configuration with a single `.env` file instead of multiple environment-specific files
@@ -57,6 +62,8 @@
 - Updated README with new screenshots and improved documentation
 - Enhance export functionality with additional fields (Type, ID, Uptime) in NetworkDisplay
 - Clarify node vs guest counts in dropdown by adding descriptive labels
+- Improved error handling in Proxmox API client
+- Enhanced network metrics stability with moving average calculations
 
 ### Removed
 - Separate environment files (`.env.development`, `.env.production`)

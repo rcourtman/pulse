@@ -1,6 +1,6 @@
 {
   "name": "pulse",
-  "version": "1.5.4",
+  "version": "1.6.0",
   "main": "dist/server.js",
   "engines": {
     "node": ">=20.0.0"
