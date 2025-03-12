@@ -14,7 +14,12 @@ import {
   Typography,
   Button,
   useTheme,
-  alpha
+  alpha,
+  ListItemIcon,
+  ListItemText,
+  Select,
+  FormControl,
+  Popover
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -24,6 +29,16 @@ import CircleIcon from '@mui/icons-material/Circle';
 import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined';
 import AdjustIcon from '@mui/icons-material/Adjust';
 import TripOriginIcon from '@mui/icons-material/TripOrigin';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import DnsIcon from '@mui/icons-material/Dns';
+import ComputerIcon from '@mui/icons-material/Computer';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
+import AllInclusiveIcon from '@mui/icons-material/AllInclusive';
+import StorageIcon from '@mui/icons-material/Storage';
+import SearchIcon from '@mui/icons-material/Search';
 import { DEFAULT_COLUMN_CONFIG } from '../../constants/networkConstants';
 import { calculateDynamicColumnWidths } from '../../utils/networkUtils';
 
@@ -45,95 +60,193 @@ const NetworkTableHeader = ({
   guestTypeFilter = 'all',
   setShowStopped,
   showRunningOnly = true,
-  setGuestTypeFilter
+  setGuestTypeFilter,
+  availableNodes = [],
+  selectedNode = 'all',
+  handleNodeChange = () => {},
+  handleStatusChange = () => {},
+  handleTypeChange = () => {},
+  activeSearchTerms = [],
+  addSearchTerm = () => {},
+  removeSearchTerm = () => {}
 }) => {
   const theme = useTheme();
 
-  // Helper function to get sort direction
-  const getSortDirection = (key) => {
-    if (!sortConfig) return 'asc';
-    return sortConfig.key === key ? sortConfig.direction : 'asc';
+  const [nodeMenuAnchorEl, setNodeMenuAnchorEl] = React.useState(null);
+  const openNodeMenu = Boolean(nodeMenuAnchorEl);
+  
+  const [statusMenuAnchorEl, setStatusMenuAnchorEl] = React.useState(null);
+  const openStatusMenu = Boolean(statusMenuAnchorEl);
+  
+  const [typeMenuAnchorEl, setTypeMenuAnchorEl] = React.useState(null);
+  const openTypeMenu = Boolean(typeMenuAnchorEl);
+  
+  const handleNodeColumnClick = (event) => {
+    event.stopPropagation();
+    setNodeMenuAnchorEl(event.currentTarget);
+  };
+  
+  const handleNodeMenuClose = () => {
+    setNodeMenuAnchorEl(null);
+  };
+  
+  const handleNodeSelect = (nodeId) => {
+    // Update dropdown filter state
+    handleNodeChange({ target: { value: nodeId } });
+    
+    // Also add the corresponding search term if not "all"
+    if (nodeId !== 'all') {
+      // Find the node name for better readability in the search term
+      const selectedNode = availableNodes.find(node => node.id === nodeId);
+      const nodeName = selectedNode ? selectedNode.name : nodeId;
+      
+      // Find and remove any existing node: filters
+      const existingNodeTerms = activeSearchTerms.filter(term => 
+        term.toLowerCase().startsWith('node:')
+      );
+      existingNodeTerms.forEach(term => {
+        removeSearchTerm(term);
+      });
+      
+      // Add the new node filter as a search term
+      addSearchTerm(`node:${nodeName}`);
+      } else {
+      // Remove any node: filters when "all" is selected
+      const existingNodeTerms = activeSearchTerms.filter(term => 
+        term.toLowerCase().startsWith('node:')
+      );
+      existingNodeTerms.forEach(term => {
+        removeSearchTerm(term);
+      });
+    }
+    
+    handleNodeMenuClose();
   };
 
-  // Determine if sorting should be enabled for type columns
-  const isSortingEnabledForType = guestTypeFilter === 'all'; // Only enable sorting if all guest types are shown
+  const handleStatusColumnClick = (event) => {
+    event.stopPropagation();
+    setStatusMenuAnchorEl(event.currentTarget);
+  };
+  
+  const handleStatusMenuClose = () => {
+    setStatusMenuAnchorEl(null);
+  };
+  
+  const handleStatusSelect = (status) => {
+    // Update dropdown filter state
+    if (status === 'all') {
+      handleStatusChange(null);
+    } else if (status === 'running') {
+      handleStatusChange(false);
+    } else if (status === 'stopped') {
+      handleStatusChange(true);
+    }
+    
+    // Also add the corresponding search term
+    // Find and remove any existing status: filters
+    const existingStatusTerms = activeSearchTerms.filter(term => 
+      term.toLowerCase().startsWith('status:')
+    );
+    existingStatusTerms.forEach(term => {
+      removeSearchTerm(term);
+    });
+    
+    // Add new status filter as a search term (except for "all" which means no filter)
+    if (status !== 'all') {
+      addSearchTerm(`status:${status}`);
+    }
+    
+    handleStatusMenuClose();
+  };
 
-  // Handle click on column header
+  const handleTypeColumnClick = (event) => {
+    event.stopPropagation();
+    setTypeMenuAnchorEl(event.currentTarget);
+  };
+  
+  const handleTypeMenuClose = () => {
+    setTypeMenuAnchorEl(null);
+  };
+  
+  const handleTypeSelect = (type) => {
+    // Update dropdown filter state
+    handleTypeChange(type);
+    
+    // Also add the corresponding search term
+    // Find and remove any existing type: filters
+    const existingTypeTerms = activeSearchTerms.filter(term => 
+      term.toLowerCase().startsWith('type:')
+    );
+    existingTypeTerms.forEach(term => {
+      removeSearchTerm(term);
+    });
+    
+    // Add new type filter as a search term (except for "all" which means no filter)
+    if (type !== 'all') {
+      addSearchTerm(`type:${type}`);
+    }
+    
+    handleTypeMenuClose();
+  };
+
+  const getSortDirection = (key) => {
+    if (sortConfig?.key === key) {
+      return sortConfig.direction;
+    }
+    return undefined;
+  };
+
+  const isSortingEnabledForType = guestTypeFilter === 'all';
+
   const handleColumnClick = (columnId) => {
-    // For status column, cycle through status filters: all -> running -> stopped -> all
-    if (columnId === 'status' && setShowStopped) {
-      if (showStopped === null) {
-        // Currently showing all, switch to showing running only
-        setShowStopped(false);
-      } else if (showStopped === false) {
-        // Currently showing running only, switch to showing stopped only
-        setShowStopped(true);
-      } else {
-        // Currently showing stopped only, switch to showing all
-        setShowStopped(null);
-      }
-      return;
-    }
-    
-    // For type column, cycle through guest type filters: all -> vm -> ct -> all
-    if (columnId === 'type' && setGuestTypeFilter) {
-      if (guestTypeFilter === 'all') {
-        setGuestTypeFilter('vm');
-      } else if (guestTypeFilter === 'vm') {
-        setGuestTypeFilter('ct');
-      } else {
-        setGuestTypeFilter('all');
-      }
-      return;
-    }
-    
-    // Disable sorting for type column when only VMs or only containers are shown
-    if (columnId === 'type' && !isSortingEnabledForType) {
-      return;
-    }
-    
-    // Disable sorting for status column completely
-    if (columnId === 'status') {
-      return;
-    }
-    
-    // Otherwise, proceed with normal sorting
+    // For normal columns, just requestSort
     requestSort(columnId);
   };
 
-  // Count visible columns
+  // New handler for node column text click that sorts by node
+  const handleNodeColumnTextClick = (e) => {
+    e.stopPropagation(); // Prevent opening the dropdown
+    requestSort('node');
+  };
+  
+  // New handler for status column text click that sorts by status
+  const handleStatusColumnTextClick = (e) => {
+    e.stopPropagation(); // Prevent opening the dropdown
+    requestSort('status');
+  };
+  
+  // New handler for type column text click that sorts by type
+  const handleTypeColumnTextClick = (e) => {
+    e.stopPropagation(); // Prevent opening the dropdown
+    requestSort('type');
+  };
+
   const visibleColumnCount = Object.values(columnVisibility).filter(col => col.visible).length;
   
-  // Check if any columns are visible
   const hasVisibleColumns = visibleColumnCount > 0;
 
-  // Calculate dynamic column widths based on visible columns
   const columnWidths = useMemo(() => {
     return calculateDynamicColumnWidths(columnVisibility);
   }, [columnVisibility, forceUpdateCounter]);
 
-  // Get visible columns in the correct order
   const visibleColumns = useMemo(() => {
     if (!columnOrder || !Array.isArray(columnOrder) || columnOrder.length === 0) {
       return [];
     }
     
-    // Filter visible columns
     const visible = Object.entries(columnVisibility || {})
       .filter(([_, config]) => config?.visible)
       .map(([id, config]) => ({ id, ...config }));
     
-    // Sort them according to columnOrder
     return columnOrder
       .filter(id => columnVisibility?.[id]?.visible)
       .map(id => {
         const column = visible.find(col => col.id === id);
         return column || null;
       })
-      .filter(Boolean); // Remove any null values
+      .filter(Boolean);
   }, [columnVisibility, columnOrder]);
 
-  // Move a column up in the order
   const moveColumnUp = (columnId) => {
     const currentIndex = columnOrder.indexOf(columnId);
     if (currentIndex > 0) {
@@ -143,7 +256,6 @@ const NetworkTableHeader = ({
     }
   };
 
-  // Move a column down in the order
   const moveColumnDown = (columnId) => {
     const currentIndex = columnOrder.indexOf(columnId);
     if (currentIndex < columnOrder.length - 1) {
@@ -153,19 +265,16 @@ const NetworkTableHeader = ({
     }
   };
 
-  // Handle drag start for a column
   const [draggedColumn, setDraggedColumn] = React.useState(null);
   const [dragOverColumn, setDragOverColumn] = React.useState(null);
   const [previewOrder, setPreviewOrder] = React.useState(null);
   const dragHandleRef = React.useRef(null);
 
-  // Let's go back to the HTML5 drag and drop, but fix the image issue properly
   const handleDragStart = (e, columnId) => {
     console.log('Drag start:', columnId);
     setDraggedColumn(columnId);
     setPreviewOrder([...columnOrder]);
     
-    // Create a completely transparent drag image
     const dragImage = document.createElement('div');
     dragImage.style.position = 'absolute';
     dragImage.style.width = '1px';
@@ -173,14 +282,10 @@ const NetworkTableHeader = ({
     dragImage.style.top = '-1000px';
     document.body.appendChild(dragImage);
     
-    // Set the drag image to our transparent div
-    // The key is to set the offset far away from the cursor
     e.dataTransfer.setDragImage(dragImage, 0, 0);
     
-    // This is needed for Firefox
     e.dataTransfer.setData('text/plain', columnId);
     
-    // Clean up
     setTimeout(() => {
       document.body.removeChild(dragImage);
     }, 0);
@@ -191,16 +296,13 @@ const NetworkTableHeader = ({
     if (draggedColumn !== columnId) {
       setDragOverColumn(columnId);
       
-      // Update preview order for live feedback
       if (previewOrder && draggedColumn && columnId) {
         const newPreviewOrder = [...previewOrder];
         const sourceIndex = newPreviewOrder.indexOf(draggedColumn);
         const targetIndex = newPreviewOrder.indexOf(columnId);
         
         if (sourceIndex !== -1 && targetIndex !== -1) {
-          // Remove the dragged item
           newPreviewOrder.splice(sourceIndex, 1);
-          // Insert it at the new position
           newPreviewOrder.splice(targetIndex, 0, draggedColumn);
           console.log('Preview order updated:', newPreviewOrder);
           setPreviewOrder(newPreviewOrder);
@@ -214,12 +316,10 @@ const NetworkTableHeader = ({
   const handleDrop = (e, targetColumnId) => {
     e.preventDefault();
     
-    // If we have a preview order, use that directly since it already shows the correct order
     if (previewOrder && draggedColumn) {
       console.log('Setting column order from preview:', previewOrder);
       setColumnOrder([...previewOrder]);
     } 
-    // Fallback to the old logic if preview order isn't available for some reason
     else if (draggedColumn && targetColumnId && draggedColumn !== targetColumnId) {
       console.log('Using fallback drop logic');
       const sourceIndex = columnOrder.indexOf(draggedColumn);
@@ -233,7 +333,6 @@ const NetworkTableHeader = ({
       }
     }
     
-    // Reset states
     setDraggedColumn(null);
     setDragOverColumn(null);
     setPreviewOrder(null);
@@ -252,13 +351,14 @@ const NetworkTableHeader = ({
     return draggedIndex < targetIndex ? 'after' : 'before';
   };
   
-  // Get the display order (either the preview during drag or the actual order)
   const displayOrder = previewOrder || columnOrder;
+
+  const selectedNodeObject = availableNodes.find(node => node.id === selectedNode);
+  const selectedNodeName = selectedNodeObject ? selectedNodeObject.name : 'All Nodes';
 
   return (
     <TableHead>
       <TableRow>
-        {/* If no columns are visible, show a message in the header */}
         {!hasVisibleColumns ? (
           <TableCell colSpan={12} align="center">
             <Box sx={{ 
@@ -285,17 +385,20 @@ const NetworkTableHeader = ({
           </TableCell>
         ) : (
           <>
-            {/* Render column headers */}
             {visibleColumns.map(column => (
               <TableCell 
                 key={column.id}
-                onClick={() => handleColumnClick(column.id)}
+                onClick={(e) => {
+                  // For special columns, don't do anything on the cell click
+                  // since we're handling clicks on the components inside
+                  if (column.id !== 'node' && column.id !== 'status' && column.id !== 'type') {
+                    handleColumnClick(column.id);
+                  }
+                }}
                 sx={{ 
                   width: columnWidths[column.id] || 'auto',
                   minWidth: getMinWidthForColumn(column.id),
-                  // Reset all background highlighting, use default background for all cells
                   backgroundColor: theme.palette.background.paper,
-                  // Remove special borders and box shadows
                   borderBottom: '1px solid',
                   borderBottomColor: 'divider',
                   borderTop: 'none',
@@ -304,165 +407,170 @@ const NetworkTableHeader = ({
                     textAlign: 'center',
                     padding: '0px 8px'
                   }),
-                  // Always make status column clickable with pointer cursor
-                  cursor: column.id === 'status' || column.id === 'type'
-                    ? 'pointer' // Always use pointer for status and type columns
-                    : 'pointer',
-                  // Only highlight on hover
+                  cursor: 'pointer',
                   '&:hover': {
                     backgroundColor: theme.palette.mode === 'dark'
-                      ? alpha(theme.palette.primary.light, 0.15) // Hover effect in dark mode
-                      : alpha(theme.palette.primary.light, 0.1) // Hover effect in light mode
+                      ? alpha(theme.palette.primary.light, 0.15)
+                      : alpha(theme.palette.primary.light, 0.1)
                   }
                 }}
               >
-                {column.id === 'status' || column.id === 'type' ? (
-                  // For status and type columns, use a simple centered display without sort arrow
+                {column.id === 'node' ? (
                   <Box 
                     sx={{ 
                       width: '100%', 
-                      height: '24px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'text.secondary',
+                      justifyContent: 'space-between',
                     }}
                   >
-                    {column.id === 'status' ? (
-                      // Show different circle icons based on which status filter is active
-                      <Tooltip title={showStopped === null ? "Show running only" : showStopped === false ? "Show stopped only" : "Show all systems"}>
-                        <Box sx={{ 
-                          position: 'relative', 
-                          width: 16, 
-                          height: 16,
+                    <Typography 
+                      variant="body2" 
+                      onClick={handleNodeColumnTextClick}
+                      sx={{ 
+                        fontWeight: sortConfig?.key === column.id ? 600 : 400,
+                        color: sortConfig?.key === column.id 
+                          ? theme.palette.mode === 'dark'
+                            ? '#ffffff' 
+                            : theme.palette.primary.main
+                          : 'inherit',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
                           cursor: 'pointer',
-                          '&:hover': {
-                            transform: 'scale(1.1)',
-                            transition: 'transform 0.2s ease'
-                          }
-                        }}>
-                          {showStopped === null ? (
-                            // When showing all systems, show a neutral grey circle
-                            <Box
+                      }}
+                    >
+                      {column.label || column.id}
+                    </Typography>
+                    <FilterListIcon 
+                      fontSize="small"
+                      onClick={(e) => handleNodeColumnClick(e)}
                               sx={{
-                                width: 8,
-                                height: 8,
+                        fontSize: '1rem',
+                        opacity: activeFilteredColumns['node'] ? 1 : 0.7,
+                        ml: 0.5,
+                        color: activeFilteredColumns['node'] 
+                          ? theme.palette.primary.main 
+                          : 'inherit',
+                        cursor: 'pointer',
+                        p: 0.3,
                                 borderRadius: '50%',
-                                bgcolor: '#9e9e9e', // neutral grey
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha('#9e9e9e', 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          ) : showStopped === false ? (
-                            // When showing running systems only, show solid green circle
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: '#4caf50', // success green (same as running status)
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha('#4caf50', 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          ) : (
-                            // When showing stopped systems only, show solid red circle
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: '#f44336', // error red (same as stopped status)
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha('#f44336', 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Tooltip>
-                    ) : (
-                      // For type column, show a colored indicator based on the current filter state
-                      <Tooltip title={guestTypeFilter === 'all' ? "Show VMs only" : guestTypeFilter === 'vm' ? "Show containers only" : "Show all types"}>
-                        <Box sx={{ 
-                          position: 'relative', 
-                          width: 16, 
-                          height: 16,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          '&:hover': {
-                            transform: 'scale(1.1)',
-                            transition: 'transform 0.2s ease'
-                          }
-                        }}>
-                          {guestTypeFilter === 'all' ? (
-                            // When showing all types, show a neutral grey circle
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: '#9e9e9e', // neutral grey
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha('#9e9e9e', 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          ) : guestTypeFilter === 'vm' ? (
-                            // When showing VMs only, show a primary blue circle (same as VM icon)
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: '#1976d2', // primary blue (same as VM icon)
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha('#1976d2', 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          ) : (
-                            // When showing containers only, show a secondary color circle (same as CT icon)
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                bgcolor: theme.palette.secondary.main, // secondary color (same as CT icon)
-                                boxShadow: theme.palette.mode === 'dark' 
-                                  ? `0 0 0 1px ${alpha(theme.palette.secondary.main, 0.5)}` 
-                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                              }}
-                            />
-                          )}
-                        </Box>
-                      </Tooltip>
-                    )}
+                        backgroundColor: activeFilteredColumns['node'] ? 
+                          alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                        }
+                      }}
+                    />
                   </Box>
-                ) : (
-                  // For all other columns, show the sort label
+                ) : column.id === 'status' ? (
+                            <Box
+                              sx={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      onClick={handleStatusColumnTextClick}
+                              sx={{
+                        fontWeight: sortConfig?.key === column.id ? 600 : 400,
+                        color: sortConfig?.key === column.id 
+                          ? theme.palette.mode === 'dark'
+                            ? '#ffffff' 
+                            : theme.palette.primary.main
+                          : 'inherit',
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                      }}
+                    >
+                      {column.label || column.id}
+                    </Typography>
+                    <FilterListIcon 
+                      fontSize="small" 
+                      onClick={(e) => handleStatusColumnClick(e)}
+                              sx={{
+                        fontSize: '1rem',
+                        opacity: activeFilteredColumns['status'] ? 1 : 0.7,
+                        ml: 0.5,
+                        color: activeFilteredColumns['status'] 
+                          ? theme.palette.primary.main 
+                          : 'inherit',
+                        cursor: 'pointer',
+                        p: 0.3,
+                                borderRadius: '50%',
+                        backgroundColor: activeFilteredColumns['status'] ? 
+                          alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                        }
+                      }}
+                    />
+                  </Box>
+                ) : column.id === 'type' ? (
+                            <Box
+                              sx={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <Typography 
+                      variant="body2" 
+                      onClick={handleTypeColumnTextClick}
+                              sx={{
+                        fontWeight: sortConfig?.key === column.id ? 600 : 400,
+                        color: sortConfig?.key === column.id 
+                          ? theme.palette.mode === 'dark'
+                            ? '#ffffff' 
+                            : theme.palette.primary.main
+                          : 'inherit',
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {column.label || column.id}
+                    </Typography>
+                    <FilterListIcon 
+                      fontSize="small" 
+                      onClick={(e) => handleTypeColumnClick(e)}
+                      sx={{ 
+                        fontSize: '1rem',
+                        opacity: activeFilteredColumns['type'] ? 1 : 0.7,
+                        ml: 0.5,
+                        color: activeFilteredColumns['type'] 
+                          ? theme.palette.primary.main 
+                          : 'inherit',
+                        cursor: 'pointer',
+                        p: 0.3,
+                                borderRadius: '50%',
+                        backgroundColor: activeFilteredColumns['type'] ? 
+                          alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                        '&:hover': {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1)
+                        }
+                      }}
+                    />
+                        </Box>
+                ) : column.id === 'name' || column.id === 'id' ? (
                   <Box sx={{ 
                     display: 'flex', 
                     alignItems: 'center',
-                    width: '100%'
+                    width: '100%',
+                    justifyContent: 'space-between'
                   }}>
                     <Typography 
                       variant="body2" 
-                      sx={{ 
-                        // Make text semi-bold when column is sorted
+                      sx={{
                         fontWeight: sortConfig?.key === column.id ? 600 : 400,
-                        // Use primary color in light mode, white in dark mode for sorted columns
                         color: sortConfig?.key === column.id 
                           ? theme.palette.mode === 'dark'
-                            ? '#ffffff' // White for dark mode
-                            : theme.palette.primary.main // Primary color for light mode
+                            ? '#ffffff'
+                            : theme.palette.primary.main
                           : 'inherit',
                         display: 'flex',
                         alignItems: 'center'
@@ -472,10 +580,44 @@ const NetworkTableHeader = ({
                       {sortConfig?.key === column.id && (
                         <Box component="span" sx={{ 
                           ml: 0.5, 
-                          display: 'flex', 
+                          display: 'flex',
                           alignItems: 'center',
                           fontSize: '0.7rem',
-                          // Use primary color in light mode, white in dark mode for sort indicator
+                          color: theme.palette.mode === 'dark' 
+                            ? '#ffffff' 
+                            : theme.palette.primary.main
+                        }}>
+                          {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                        </Box>
+                      )}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    width: '100%'
+                  }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        fontWeight: sortConfig?.key === column.id ? 600 : 400,
+                        color: sortConfig?.key === column.id 
+                          ? theme.palette.mode === 'dark'
+                            ? '#ffffff'
+                            : theme.palette.primary.main
+                          : 'inherit',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {column.label || column.id}
+                      {sortConfig?.key === column.id && (
+                        <Box component="span" sx={{ 
+                          ml: 0.5, 
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontSize: '0.7rem',
                           color: theme.palette.mode === 'dark' 
                             ? '#ffffff' 
                             : theme.palette.primary.main
@@ -491,7 +633,315 @@ const NetworkTableHeader = ({
           </>
         )}
         
-        {/* Column menu */}
+        <Menu
+          id="node-filter-menu"
+          anchorEl={nodeMenuAnchorEl}
+          open={openNodeMenu}
+          onClose={handleNodeMenuClose}
+          MenuListProps={{
+            'aria-labelledby': 'node-filter-button',
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          PaperProps={{
+            elevation: 3,
+            sx: { 
+              borderRadius: 2,
+              overflow: 'hidden',
+              width: 200,
+              maxHeight: 300
+            }
+          }}
+        >
+          <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Filter by Node
+            </Typography>
+          </Box>
+          
+          <Box sx={{ maxHeight: '60vh', overflow: 'auto' }}>
+            {availableNodes.map((node) => (
+              <MenuItem 
+                key={node.id} 
+                value={node.id}
+                onClick={() => handleNodeSelect(node.id)}
+                sx={{ 
+                  py: 1,
+                  borderLeft: selectedNode === node.id ? '3px solid' : 'none',
+                  borderLeftColor: 'primary.main',
+                  pl: selectedNode === node.id ? 1 : 2,
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>
+                  {node.id === 'all' ? (
+                    <ViewListIcon fontSize="small" color={selectedNode === node.id ? "primary" : "inherit"} />
+                  ) : (
+                    <ComputerIcon fontSize="small" color={selectedNode === node.id ? "primary" : "inherit"} />
+                  )}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={node.name} 
+                  primaryTypographyProps={{ 
+                    variant: 'body2',
+                    fontWeight: selectedNode === node.id ? 600 : 400
+                  }} 
+                />
+                {selectedNode === node.id && (
+                  <CheckIcon 
+                    fontSize="small" 
+                    color="primary" 
+                    sx={{ ml: 1, fontSize: '1rem' }} 
+                  />
+                )}
+              </MenuItem>
+            ))}
+          </Box>
+        </Menu>
+        
+        <Menu
+          id="status-filter-menu"
+          anchorEl={statusMenuAnchorEl}
+          open={openStatusMenu}
+          onClose={handleStatusMenuClose}
+          MenuListProps={{
+            'aria-labelledby': 'status-filter-button',
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          PaperProps={{
+            elevation: 3,
+            sx: { 
+              borderRadius: 2,
+              overflow: 'hidden',
+              width: 200
+            }
+          }}
+        >
+          <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Filter by Status
+            </Typography>
+          </Box>
+          
+          <MenuItem 
+            value="all"
+            onClick={() => handleStatusSelect('all')}
+            sx={{ 
+              py: 1,
+              borderLeft: showStopped === null ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: showStopped === null ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <AllInclusiveIcon fontSize="small" color={showStopped === null ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="All Statuses" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: showStopped === null ? 600 : 400
+              }} 
+            />
+            {showStopped === null && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+          
+          <MenuItem 
+            value="running"
+            onClick={() => handleStatusSelect('running')}
+            sx={{ 
+              py: 1,
+              borderLeft: showStopped === false ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: showStopped === false ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <PlayArrowIcon fontSize="small" color={showStopped === false ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Running" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: showStopped === false ? 600 : 400
+              }} 
+            />
+            {showStopped === false && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+          
+          <MenuItem 
+            value="stopped"
+            onClick={() => handleStatusSelect('stopped')}
+            sx={{ 
+              py: 1,
+              borderLeft: showStopped === true ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: showStopped === true ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <StopIcon fontSize="small" color={showStopped === true ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Stopped" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: showStopped === true ? 600 : 400
+              }} 
+            />
+            {showStopped === true && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+        </Menu>
+        
+        <Menu
+          id="type-filter-menu"
+          anchorEl={typeMenuAnchorEl}
+          open={openTypeMenu}
+          onClose={handleTypeMenuClose}
+          MenuListProps={{
+            'aria-labelledby': 'type-filter-button',
+          }}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'left',
+          }}
+          PaperProps={{
+            elevation: 3,
+            sx: { 
+              borderRadius: 2,
+              overflow: 'hidden',
+              width: 200
+            }
+          }}
+        >
+          <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Filter by Type
+            </Typography>
+          </Box>
+          
+          <MenuItem 
+            value="all"
+            onClick={() => handleTypeSelect('all')}
+            sx={{ 
+              py: 1,
+              borderLeft: guestTypeFilter === 'all' ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: guestTypeFilter === 'all' ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <ViewListIcon fontSize="small" color={guestTypeFilter === 'all' ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="All Types" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: guestTypeFilter === 'all' ? 600 : 400
+              }} 
+            />
+            {guestTypeFilter === 'all' && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+          
+          <MenuItem 
+            value="vm"
+            onClick={() => handleTypeSelect('vm')}
+            sx={{ 
+              py: 1,
+              borderLeft: guestTypeFilter === 'vm' ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: guestTypeFilter === 'vm' ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <ComputerIcon fontSize="small" color={guestTypeFilter === 'vm' ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="VMs" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: guestTypeFilter === 'vm' ? 600 : 400
+              }} 
+            />
+            {guestTypeFilter === 'vm' && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+          
+          <MenuItem 
+            value="ct"
+            onClick={() => handleTypeSelect('ct')}
+            sx={{ 
+              py: 1,
+              borderLeft: guestTypeFilter === 'ct' ? '3px solid' : 'none',
+              borderLeftColor: 'primary.main',
+              pl: guestTypeFilter === 'ct' ? 1 : 2,
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>
+              <StorageIcon fontSize="small" color={guestTypeFilter === 'ct' ? "primary" : "inherit"} />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Containers" 
+              primaryTypographyProps={{ 
+                variant: 'body2',
+                fontWeight: guestTypeFilter === 'ct' ? 600 : 400
+              }} 
+            />
+            {guestTypeFilter === 'ct' && (
+              <CheckIcon 
+                fontSize="small" 
+                color="primary" 
+                sx={{ ml: 1, fontSize: '1rem' }} 
+              />
+            )}
+          </MenuItem>
+        </Menu>
+        
         <Menu
           id="column-menu"
           anchorEl={columnMenuAnchorEl}
@@ -527,7 +977,6 @@ const NetworkTableHeader = ({
           </Box>
           
           <Box sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-            {/* Column visibility and order controls */}
             {displayOrder.map((columnId) => {
               const config = columnVisibility[columnId];
               if (!config) return null;
@@ -661,23 +1110,22 @@ const NetworkTableHeader = ({
   );
 };
 
-// Helper function to get minimum width for each column
 const getMinWidthForColumn = (columnId) => {
   const minWidths = {
-    node: 70,     // Reduced from 80px
-    type: 40,     // Reduced from 65px since we're only showing an icon now
-    id: 60,       // Reduced from 70px
-    status: 40,   // Reduced from 65px since we're only showing an icon now
-    name: 130,    // Reduced from 150px
-    cpu: 100,     // Reduced from 120px
-    memory: 100,  // Reduced from 120px
-    disk: 100,    // Reduced from 120px
-    download: 90, // Reduced from 100px
-    upload: 90,   // Reduced from 100px
-    uptime: 85    // Increased from 70px to accommodate longer uptime strings
+    node: 70,
+    type: 40,
+    id: 60,
+    status: 40,
+    name: 130,
+    cpu: 100,
+    memory: 100,
+    disk: 100,
+    download: 90,
+    upload: 90,
+    uptime: 85
   };
   
-  return minWidths[columnId] || 90; // Default reduced from 100px
+  return minWidths[columnId] || 90;
 };
 
 export default NetworkTableHeader; 

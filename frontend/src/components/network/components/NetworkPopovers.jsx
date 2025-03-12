@@ -87,6 +87,8 @@ const NetworkPopovers = ({
               onSubmit={(e) => {
                 e.preventDefault();
                 if (searchTerm.trim()) {
+                  // Add the entire search term (which can contain multiple space-separated words)
+                  // This creates an OR search (spaces act as OR operators)
                   addSearchTerm(searchTerm.trim());
                   setSearchTerm('');
                 }
@@ -97,21 +99,14 @@ const NetworkPopovers = ({
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Search systems..."
+                id="searchInput"
+                placeholder="Press Enter to search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && searchTerm.trim()) {
-                    e.preventDefault();
-                    addSearchTerm(searchTerm.trim());
-                    setSearchTerm('');
-                  }
-                }}
                 inputRef={searchInputRef}
                 autoFocus
-                variant="standard"
+                variant="outlined"
                 InputProps={{
-                  disableUnderline: true,
                   endAdornment: searchTerm ? (
                     <IconButton
                       size="small"
@@ -121,16 +116,86 @@ const NetworkPopovers = ({
                     >
                       <ClearIcon fontSize="small" />
                     </IconButton>
-                  ) : null
+                  ) : null,
+                  inputProps: {
+                    autoCapitalize: "none",
+                    autoComplete: "off",
+                    autoCorrect: "off",
+                    spellCheck: "false"
+                  }
                 }}
                 sx={{ flex: 1 }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchTerm.trim()) {
+                      // Add the entire search term (which can contain multiple space-separated words)
+                      // This creates an OR search (spaces act as OR operators)
+                      addSearchTerm(searchTerm.trim());
+                      setSearchTerm('');
+                    }
+                  }
+                }}
               />
             </Box>
-          
+            
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                <strong>Search Tips:</strong>
+                <br />• <strong>Just start typing</strong> anywhere to search
+                <br />• Use <strong>status:running</strong> or <strong>status:stopped</strong> to filter by status
+                <br />• Use <strong>type:vm</strong> or <strong>type:ct</strong> for filtering by system type
+                <br />• Type multiple words for OR search (e.g., <strong>vm server</strong>)
+                <br />• Add multiple search terms for AND filtering
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 2 }}>
+                <Chip 
+                  label="status:running" 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => {
+                    // Don't just set the search term, directly add it as a filter
+                    addSearchTerm('status:running');
+                  }}
+                  sx={{ borderStyle: 'dashed' }}
+                />
+                <Chip 
+                  label="status:stopped" 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => {
+                    // Don't just set the search term, directly add it as a filter
+                    addSearchTerm('status:stopped');
+                  }}
+                  sx={{ borderStyle: 'dashed' }}
+                />
+                <Chip 
+                  label="type:vm" 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => {
+                    // Don't just set the search term, directly add it as a filter
+                    addSearchTerm('type:vm');
+                  }}
+                  sx={{ borderStyle: 'dashed' }}
+                />
+                <Chip 
+                  label="type:ct" 
+                  size="small" 
+                  variant="outlined" 
+                  onClick={() => {
+                    // Don't just set the search term, directly add it as a filter
+                    addSearchTerm('type:ct');
+                  }}
+                  sx={{ borderStyle: 'dashed' }}
+                />
+              </Box>
+            </Box>
+            
             {activeSearchTerms.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Active Search Terms
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                  Active Filters:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {activeSearchTerms.map((term) => (
@@ -139,6 +204,17 @@ const NetworkPopovers = ({
                       label={term}
                       size="small"
                       onDelete={() => removeSearchTerm(term)}
+                      sx={{ 
+                        bgcolor: 'primary.main', 
+                        color: 'primary.contrastText',
+                        '& .MuiChip-deleteIcon': {
+                          color: 'primary.contrastText',
+                          opacity: 0.7,
+                          '&:hover': {
+                            opacity: 1
+                          }
+                        }
+                      }}
                     />
                   ))}
                 </Box>

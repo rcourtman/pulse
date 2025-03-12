@@ -64,6 +64,180 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     }
   }, [guestData, nodeData, metricsData]);
   
+  // Prepare availableNodes for dropdown
+  const availableNodes = useMemo(() => {
+    // Start with the "All Nodes" option
+    const nodes = [
+      { id: 'all', name: 'All Nodes', count: 0 }
+    ];
+    
+    // Add nodes from the nodeData
+    if (nodeData && nodeData.length > 0) {
+      // Add each node
+      nodeData.forEach(node => {
+        nodes.push({
+          id: node.id,
+          name: node.name || node.id,
+          count: 0
+        });
+      });
+      
+      // Count guests per node
+      if (guestData && guestData.length > 0) {
+        // Initialize counts
+        const nodeCounts = {};
+        nodes.forEach(node => {
+          nodeCounts[node.id] = 0;
+        });
+        
+        // Count guests for each node
+        guestData.forEach(guest => {
+          if (guest.node) {
+            const normalizedNodeId = guest.node.replace('-', '');
+            if (nodeCounts[normalizedNodeId] !== undefined) {
+              nodeCounts[normalizedNodeId]++;
+            }
+            if (nodeCounts[guest.node] !== undefined) {
+              nodeCounts[guest.node]++;
+            }
+          }
+        });
+        
+        // Update counts in nodes array
+        nodes.forEach(node => {
+          if (node.id !== 'all') {
+            node.count = nodeCounts[node.id] || 0;
+          }
+        });
+        
+        // Update the "All Nodes" count
+        nodes[0].count = guestData.length;
+      }
+    }
+    
+    return nodes;
+  }, [nodeData, guestData]);
+  
+  // Handle node selection change
+  const handleNodeChange = (event) => {
+    // Check if we can access window.location
+    if (window && window.location) {
+      try {
+        // Create a URL with the selected node as a query parameter
+        const url = new URL(window.location);
+        const nodeValue = event.target.value;
+        
+        // Update the URL with the new node value
+        if (nodeValue === 'all') {
+          // Remove the node parameter if 'all' is selected
+          url.searchParams.delete('node');
+        } else {
+          // Set the node parameter to the selected value
+          url.searchParams.set('node', nodeValue);
+        }
+        
+        // Update the browser history without reloading the page
+        window.history.pushState({}, '', url);
+        
+        // Dispatch a custom event to notify App.jsx about the node change
+        const nodeChangeEvent = new CustomEvent('nodeChange', {
+          detail: { node: nodeValue }
+        });
+        window.dispatchEvent(nodeChangeEvent);
+        
+        console.log('Node selection changed to:', nodeValue);
+      } catch (error) {
+        console.error('Error updating URL with node selection:', error);
+      }
+    }
+  };
+  
+  // Handle status selection change
+  const handleStatusChange = (status) => {
+    if (window && window.location) {
+      try {
+        const url = new URL(window.location);
+        
+        // Update the URL with the new status value
+        if (status === null) {
+          // Remove the status parameter if 'all' is selected
+          url.searchParams.delete('status');
+        } else if (status === false) {
+          // Set the status parameter to 'running'
+          url.searchParams.set('status', 'running');
+        } else {
+          // Set the status parameter to 'stopped'
+          url.searchParams.set('status', 'stopped');
+        }
+        
+        // Update the browser history without reloading the page
+        window.history.pushState({}, '', url);
+        
+        // Update the status filter
+        setShowStopped(status);
+        
+        console.log('Status filter changed to:', status === null ? 'all' : status === false ? 'running' : 'stopped');
+      } catch (error) {
+        console.error('Error updating URL with status selection:', error);
+      }
+    }
+  };
+  
+  // Handle type selection change
+  const handleTypeChange = (type) => {
+    if (window && window.location) {
+      try {
+        const url = new URL(window.location);
+        
+        // Update the URL with the new type value
+        if (type === 'all') {
+          // Remove the type parameter if 'all' is selected
+          url.searchParams.delete('type');
+        } else {
+          // Set the type parameter to the selected value
+          url.searchParams.set('type', type);
+        }
+        
+        // Update the browser history without reloading the page
+        window.history.pushState({}, '', url);
+        
+        // Update the type filter
+        setGuestTypeFilter(type);
+        
+        console.log('Type filter changed to:', type);
+      } catch (error) {
+        console.error('Error updating URL with type selection:', error);
+      }
+    }
+  };
+  
+  // Check URL parameters on initial load
+  useEffect(() => {
+    if (window && window.location) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Check for status parameter
+        const statusParam = urlParams.get('status');
+        if (statusParam) {
+          if (statusParam === 'running') {
+            setShowStopped(false);
+          } else if (statusParam === 'stopped') {
+            setShowStopped(true);
+          }
+        }
+        
+        // Check for type parameter
+        const typeParam = urlParams.get('type');
+        if (typeParam && (typeParam === 'vm' || typeParam === 'ct')) {
+          setGuestTypeFilter(typeParam);
+        }
+      } catch (error) {
+        console.error('Error reading URL parameters:', error);
+      }
+    }
+  }, []);
+  
   // Use the formatted metrics hook
   const formattedMetrics = useFormattedMetrics(metricsData);
   
@@ -122,28 +296,28 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     // Function to show browser notification
     const showBrowserNotification = (guestName, fromNode, toNode) => {
       try {
-        const notification = new Notification('Proxmox Migration', {
+        const notificationOptions = {
           body: `${guestName} migrated from ${fromNode} to ${toNode}`,
-          icon: '/favicon.ico'
-        });
+          icon: '/logo192.png',
+          tag: 'migration-event',
+          requireInteraction: false
+        };
         
-        // Auto close after 5 seconds
-        setTimeout(() => notification.close(), 5000);
+        new Notification('Guest Migration', notificationOptions);
       } catch (error) {
         console.error('Error showing browser notification:', error);
       }
     };
     
     // Add event listener
-    window.addEventListener('proxmox:migration', handleMigrationEvent);
+    window.addEventListener('migration', handleMigrationEvent);
     
     // Clean up
     return () => {
-      window.removeEventListener('proxmox:migration', handleMigrationEvent);
+      window.removeEventListener('migration', handleMigrationEvent);
     };
   }, [nodeData, showNotification]);
   
-  // Combine real and mock metrics, preferring real metrics if available
   const combinedMetrics = useMemo(() => {
     // When using the mock data server, always use the real metrics
     const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
@@ -239,7 +413,8 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     handleSearchButtonClick,
     searchButtonRef,
     setSearchTerm,
-    showNotification
+    showNotification,
+    searchInputRef
   });
   
   // Use data processing hook
@@ -273,29 +448,9 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   });
   
   // Show loading state if not connected
-  if (!isConnected && connectionStatus !== 'error' && connectionStatus !== 'disconnected') {
-    // Check if we're using mock data
-    const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
-                        localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
-    
-    // If we're using mock data, we can still show the UI even if not connected
-    if (!useMockData) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <CircularProgress />
-        </Box>
-      );
-    }
-  }
-  
-  // Show error state if there's a connection error
-  if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
-    // Check if we're using mock data
-    const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
-                        localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
-    
-    // If we're using mock data, we can still show the UI even if there's a connection error
-    if (!useMockData) {
+  if (!isConnected) {
+    if (error || connectionStatus === 'disconnected' || connectionStatus === 'error') {
+      // Show connection error
       return (
         <ConnectionErrorDisplay 
           connectionStatus={connectionStatus} 
@@ -402,6 +557,14 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
         setShowStopped={setShowStopped}
         guestTypeFilter={guestTypeFilter}
         setGuestTypeFilter={setGuestTypeFilter}
+        availableNodes={availableNodes}
+        selectedNode={selectedNode}
+        handleNodeChange={handleNodeChange}
+        handleStatusChange={handleStatusChange}
+        handleTypeChange={handleTypeChange}
+        activeSearchTerms={activeSearchTerms}
+        addSearchTerm={addSearchTerm}
+        removeSearchTerm={removeSearchTerm}
       />
       
       {/* Notification Snackbar */}

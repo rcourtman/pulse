@@ -150,42 +150,102 @@ export const getSortedAndFilteredData = (
     
     if (terms.length > 0) {
       filteredData = filteredData.filter(guest => {
-        // Special handling for exact type searches
-        for (const term of terms) {
+        // Check each search term
+        return terms.every(term => {
           const termLower = term.toLowerCase().trim();
           
-          // Exact match for type terms
-          if (termLower === 'ct' || termLower === 'container') {
-            return guest.type === 'lxc';
+          // Handle OR search with spaces
+          const spaceTerms = termLower.split(' ').map(t => t.trim()).filter(t => t);
+          if (spaceTerms.length > 1) {
+            // For OR search, at least one term must match
+            return spaceTerms.some(spaceTerm => {
+              return matchesTerm(guest, spaceTerm, nodeData);
+            });
           }
           
-          if (termLower === 'vm' || termLower === 'virtual machine') {
-            return guest.type === 'qemu';
+          // Handle OR search with pipe character (backward compatibility)
+          if (termLower.includes('|')) {
+            const orTerms = termLower.split('|').map(t => t.trim()).filter(t => t);
+            // For OR search, at least one term must match
+            return orTerms.some(orTerm => {
+              return matchesTerm(guest, orTerm, nodeData);
+            });
           }
-        }
-        
-        // For other searches, use the standard inclusion check
-        const searchableText = [
-          guest.name || '',
-          guest.id || '',
-          guest.status || '',
-          guest.type || '',
-          guest.node || '',
-          // Include friendly node name
-          getNodeName(guest.node, nodeData) || '',
-          // Include type labels for better searching
-          guest.type === 'qemu' ? 'vm virtual machine' : '',
-          guest.type === 'lxc' ? 'ct container' : '',
-          // Include status labels for better searching
-          guest.status?.toLowerCase() === 'running' ? 'online active' : 'offline inactive stopped'
-        ].map(val => String(val).toLowerCase()).join(' ');
-        
-        // Check if any search term is found in the searchable text
-        return terms.some(term => 
-          searchableText.includes(term.toLowerCase().trim())
-        );
+          
+          // Regular term matching (single term)
+          return matchesTerm(guest, termLower, nodeData);
+        });
       });
     }
+  }
+  
+  // Function to check if a guest matches a single term
+  function matchesTerm(guest, termLower, nodeData) {
+    // Special handling for exact type searches
+    if (termLower === 'ct' || termLower === 'container') {
+      return guest.type === 'lxc';
+    }
+    
+    if (termLower === 'vm' || termLower === 'virtual machine') {
+      return guest.type === 'qemu';
+    }
+    
+    // Handle column-specific searches (using prefixes)
+    if (termLower.includes(':')) {
+      const [prefix, value] = termLower.split(':', 2);
+      
+      // If there's no value after the colon, just do a regular search
+      if (!value || value.trim() === '') {
+        return searchableText(guest, nodeData).includes(termLower);
+      }
+      
+      const searchValue = value.trim();
+      
+      // Column-specific search logic
+      switch (prefix.trim()) {
+        case 'name':
+          return String(guest.name || '').toLowerCase().includes(searchValue);
+        case 'id':
+          return String(guest.id || '').toLowerCase().includes(searchValue);
+        case 'node':
+          return String(guest.node || '').toLowerCase().includes(searchValue) ||
+                 String(getNodeName(guest.node, nodeData) || '').toLowerCase().includes(searchValue);
+        case 'status':
+          return String(guest.status || '').toLowerCase().includes(searchValue);
+        case 'type':
+          if (searchValue === 'vm' || searchValue === 'virtual' || searchValue === 'machine') {
+            return guest.type === 'qemu';
+          }
+          if (searchValue === 'ct' || searchValue === 'container' || searchValue === 'lxc') {
+            return guest.type === 'lxc';
+          }
+          return String(guest.type || '').toLowerCase().includes(searchValue);
+        default:
+          // If we don't recognize the prefix, treat it as a regular search
+          return searchableText(guest, nodeData).includes(termLower);
+      }
+    }
+    
+    // For regular searches, check if the term is in the searchable text
+    return searchableText(guest, nodeData).includes(termLower);
+  }
+  
+  // Function to get searchable text for a guest
+  function searchableText(guest, nodeData) {
+    return [
+      guest.name || '',
+      guest.id || '',
+      guest.status || '',
+      guest.type || '',
+      guest.node || '',
+      // Include friendly node name
+      getNodeName(guest.node, nodeData) || '',
+      // Include type labels for better searching
+      guest.type === 'qemu' ? 'vm virtual machine' : '',
+      guest.type === 'lxc' ? 'ct container' : '',
+      // Include status labels for better searching
+      guest.status?.toLowerCase() === 'running' ? 'online active' : 'offline inactive stopped'
+    ].map(val => String(val).toLowerCase()).join(' ');
   }
   
   // Apply metric filters

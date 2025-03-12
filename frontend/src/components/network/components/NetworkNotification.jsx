@@ -10,7 +10,7 @@ const NetworkNotification = ({
   return (
     <Snackbar
       open={snackbarOpen}
-      autoHideDuration={4000}
+      autoHideDuration={2000}
       onClose={handleSnackbarClose}
       anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
     >

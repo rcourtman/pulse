@@ -62,6 +62,8 @@ const NetworkFilters = ({
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
+      // Add the entire search term (which can contain multiple space-separated words)
+      // This creates an AND search as the filtering logic uses .every()
       addSearchTerm(searchTerm.trim());
       setSearchTerm('');
     }
@@ -112,7 +114,7 @@ const NetworkFilters = ({
       >
         <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
         <InputBase
-          placeholder="Search systems..."
+          placeholder="Press Enter to search..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           sx={{ flex: 1 }}
@@ -131,6 +133,13 @@ const NetworkFilters = ({
             ) : null
           }
         />
+      </Box>
+      
+      {/* Search Pro Tips */}
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          <strong>Tips:</strong> Use <strong>status:running</strong> or <strong>status:stopped</strong> to filter by status. Use <strong>type:vm</strong> or <strong>type:ct</strong> for system types.
+        </Typography>
       </Box>
       
       {/* Active search terms */}

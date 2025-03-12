@@ -9,24 +9,12 @@ import {
   IconButton, 
   Tooltip, 
   alpha,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Chip,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  useTheme,
   Button,
   Link
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import ComputerIcon from '@mui/icons-material/Computer';
-import DnsIcon from '@mui/icons-material/Dns';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import CheckIcon from '@mui/icons-material/Check';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import NetworkDisplay from './components/NetworkDisplay';
 import { AppThemeProvider, useThemeContext } from './context/ThemeContext';
@@ -74,6 +62,28 @@ function AppContent() {
     }
   }, []);
   
+  // Add a listener for node change events from the NetworkDisplay component
+  useEffect(() => {
+    const handleNodeChangeEvent = (event) => {
+      if (event.detail && event.detail.node) {
+        setSelectedNode(event.detail.node);
+      }
+    };
+    
+    window.addEventListener('nodeChange', handleNodeChangeEvent);
+    
+    // Check URL parameters on initial load
+    const urlParams = new URLSearchParams(window.location.search);
+    const nodeParam = urlParams.get('node');
+    if (nodeParam) {
+      setSelectedNode(nodeParam);
+    }
+    
+    return () => {
+      window.removeEventListener('nodeChange', handleNodeChangeEvent);
+    };
+  }, []);
+  
   // If there's an error, show an error message
   if (hasError) {
     return (
@@ -105,81 +115,6 @@ function AppContent() {
       </Box>
     );
   }
-  
-  // Transform the node data from the API into the format needed for the dropdown
-  const availableNodes = React.useMemo(() => {
-    // Start with the "All Nodes" option
-    const nodes = [
-      { id: 'all', name: 'All Nodes', count: 0 }
-    ];
-    
-    // Add nodes from the API
-    if (nodeData && nodeData.length > 0) {
-      console.log('Processing node data for dropdown:', nodeData);
-      
-      // Count guests for each node
-      const nodeCounts = {};
-      
-      // Initialize counts for each node
-      nodeData.forEach(node => {
-        // Extract node number from the id (e.g., "node-1" -> "node1")
-        const nodeId = node.id.replace('-', '');
-        nodeCounts[nodeId] = 0;
-        
-        // Also store the original ID for reference
-        nodeCounts[node.id] = 0;
-      });
-      
-      // Count guests for each node
-      if (guestData && guestData.length > 0) {
-        guestData.forEach(guest => {
-          if (guest.node) {
-            // Try both formats - with and without hyphen
-            const normalizedNodeId = guest.node.replace('-', '');
-            
-            // Increment count for normalized ID if it exists
-            if (nodeCounts[normalizedNodeId] !== undefined) {
-              nodeCounts[normalizedNodeId]++;
-            }
-            
-            // Also increment count for original ID if it exists
-            if (nodeCounts[guest.node] !== undefined) {
-              nodeCounts[guest.node]++;
-            }
-          }
-        });
-      }
-      
-      console.log('Node counts:', nodeCounts);
-      
-      // Add nodes to the list with their counts
-      nodeData.forEach(node => {
-        // Extract node number from the id (e.g., "node-1" -> "node1")
-        const nodeId = node.id.replace('-', '');
-        
-        // Add the node to the list
-        nodes.push({
-          id: nodeId,
-          originalId: node.id,
-          name: node.name,
-          count: Math.max(nodeCounts[nodeId] || 0, nodeCounts[node.id] || 0)
-        });
-      });
-      
-      // Update the count for "All Nodes" to show total number of guests
-      nodes[0].count = guestData ? guestData.length : 0;
-      
-      console.log('Available nodes for dropdown:', nodes);
-    }
-    
-    return nodes;
-  }, [nodeData, guestData]);
-  
-  // Handle node selection change
-  const handleNodeChange = (event) => {
-    setSelectedNode(event.target.value);
-    event.target.blur(); // Remove focus after selection
-  };
   
   return (
     <Box sx={{ 
@@ -238,137 +173,6 @@ function AppContent() {
               </Link>
             </Tooltip>
           </Box>
-          
-          {/* Node Selection Dropdown */}
-          <FormControl 
-            variant="outlined" 
-            size="small"
-            sx={{ 
-              minWidth: { xs: 48, sm: 160 },
-              mr: { xs: 1, sm: 2 },
-              '& .MuiOutlinedInput-root': {
-                color: 'white',
-                height: 32,
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                transition: 'all 0.2s ease',
-                boxShadow: 0,
-                background: 'transparent',
-                border: '1px solid',
-                borderColor: 'rgba(255, 255, 255, 0.3)',
-                '&:hover': {
-                  background: theme => alpha(theme.palette.primary.light, 0.1),
-                  boxShadow: 2,
-                  transform: 'translateY(-1px)'
-                },
-                '&.Mui-focused': {
-                  background: 'transparent',
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                  boxShadow: 1,
-                },
-                '&:active': {
-                  transform: 'translateY(0px)',
-                  boxShadow: 1
-                },
-                '& .MuiSelect-icon': {
-                  color: 'rgba(255, 255, 255, 0.7)',
-                },
-                padding: { xs: '4px 8px', sm: '4px 14px' },
-                '& .MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
-                },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                  border: 'none'
-                }
-              }
-            }}
-          >
-            <Select
-              value={selectedNode}
-              onChange={handleNodeChange}
-              onClose={(event) => event.target?.blur()}
-              displayEmpty
-              renderValue={(selected) => {
-                const node = availableNodes.find(n => n.id === selected);
-                return (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-                    {selected === 'all' ? (
-                      <ViewListIcon fontSize="small" />
-                    ) : (
-                      <DnsIcon fontSize="small" />
-                    )}
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        fontWeight: 500,
-                        display: { xs: 'none', sm: 'block' }
-                      }}
-                    >
-                      {node ? node.name : 'Select Node'}
-                    </Typography>
-                  </Box>
-                );
-              }}
-              MenuProps={{
-                PaperProps: {
-                  sx: {
-                    maxHeight: 300,
-                    mt: 0.5,
-                    borderRadius: 2,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    '& .MuiMenuItem-root': {
-                      py: 1,
-                      px: 2,
-                    }
-                  }
-                }
-              }}
-            >
-              {availableNodes.map((node) => (
-                <MenuItem 
-                  key={node.id} 
-                  value={node.id}
-                  sx={{ 
-                    borderRadius: 1,
-                    my: 0.5,
-                    '&.Mui-selected': {
-                      bgcolor: theme => alpha(theme.palette.primary.main, 0.1),
-                      '&:hover': {
-                        bgcolor: theme => alpha(theme.palette.primary.main, 0.15),
-                      }
-                    }
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    {node.id === 'all' ? (
-                      <ViewListIcon fontSize="small" color="primary" />
-                    ) : (
-                      <ComputerIcon fontSize="small" color="primary" />
-                    )}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={node.name} 
-                    primaryTypographyProps={{ 
-                      variant: 'body2',
-                      fontWeight: selectedNode === node.id ? 600 : 400
-                    }} 
-                  />
-                  {selectedNode === node.id && (
-                    <CheckIcon 
-                      fontSize="small" 
-                      color="primary" 
-                      sx={{ ml: 1, fontSize: '1rem' }} 
-                    />
-                  )}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
           
           {/* Dark Mode Toggle Button */}
           <Tooltip title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>

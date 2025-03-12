@@ -59,6 +59,7 @@ const NetworkHeader = ({
           aria-controls={openSearch ? 'search-menu' : undefined}
           aria-haspopup="true"
           aria-expanded={openSearch ? 'true' : undefined}
+          disableRipple={true}
           sx={{ 
             border: '1px solid',
             borderColor: openSearch ? 'primary.main' : 'divider',

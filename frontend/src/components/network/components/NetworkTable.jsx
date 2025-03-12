@@ -32,7 +32,15 @@ const NetworkTable = ({
   showStopped,
   setShowStopped,
   guestTypeFilter,
-  setGuestTypeFilter
+  setGuestTypeFilter,
+  availableNodes = [],
+  selectedNode = 'all',
+  handleNodeChange = () => {},
+  handleStatusChange = () => {},
+  handleTypeChange = () => {},
+  activeSearchTerms = [],
+  addSearchTerm = () => {},
+  removeSearchTerm = () => {}
 }) => {
   return (
     <Card>
@@ -69,6 +77,14 @@ const NetworkTable = ({
               guestTypeFilter={guestTypeFilter}
               setShowStopped={setShowStopped}
               setGuestTypeFilter={setGuestTypeFilter}
+              availableNodes={availableNodes}
+              selectedNode={selectedNode}
+              handleNodeChange={handleNodeChange}
+              handleStatusChange={handleStatusChange}
+              handleTypeChange={handleTypeChange}
+              activeSearchTerms={activeSearchTerms}
+              addSearchTerm={addSearchTerm}
+              removeSearchTerm={removeSearchTerm}
             />
             <NetworkTableBody
               sortedAndFilteredData={sortedAndFilteredData}

@@ -121,19 +121,16 @@ const NetworkTableRow = ({
             height: '100%'
           }}>
             <Tooltip title={isVM ? 'Virtual Machine' : 'Container'}>
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    bgcolor: isVM ? '#1976d2' : theme.palette.secondary.main, // primary blue for VM, secondary for CT
-                    boxShadow: theme.palette.mode === 'dark' 
-                      ? `0 0 0 1px ${alpha(isVM ? '#1976d2' : theme.palette.secondary.main, 0.5)}` 
-                      : '0 0 0 1px rgba(255, 255, 255, 0.8)',
-                  }}
-                />
-              </Box>
+              <Typography 
+                variant="caption" 
+                sx={{
+                  fontWeight: 'bold',
+                  color: isVM ? theme.palette.primary.main : '#00C853',
+                  fontSize: '0.7rem'
+                }}
+              >
+                {isVM ? 'VM' : 'CT'}
+              </Typography>
             </Tooltip>
           </Box>
         );

@@ -9,18 +9,14 @@ const useKeyboardShortcuts = ({
   handleSearchButtonClick,
   searchButtonRef,
   setSearchTerm,
-  showNotification
+  showNotification,
+  searchInputRef
 }) => {
   const [escRecentlyPressed, setEscRecentlyPressed] = useState(false);
 
   // Set up keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Immediately return if search popover is open
-      if (openSearch) {
-        return;
-      }
-      
       // Don't trigger shortcuts if typing in an input field
       if (
         e.target.tagName === 'INPUT' || 
@@ -47,36 +43,51 @@ const useKeyboardShortcuts = ({
         return;
       }
       
-      // Ctrl+F or Cmd+F to focus search
+      // Ctrl+F or Cmd+F to focus search without setting a term
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         handleSearchButtonClick({ currentTarget: searchButtonRef.current });
         return;
       }
       
-      // / to focus search
+      // / to focus search without setting a term
       if (e.key === '/' && !escRecentlyPressed) {
         e.preventDefault();
         handleSearchButtonClick({ currentTarget: searchButtonRef.current });
         return;
       }
       
-      // Capture typing for search (only if it's a single printable character)
+      // Enter to focus search without setting a term
+      if (e.key === 'Enter' && !escRecentlyPressed) {
+        e.preventDefault();
+        handleSearchButtonClick({ currentTarget: searchButtonRef.current });
+        return;
+      }
+      
+      // Capture single printable characters to both open search AND start typing
       const isPrintableChar = 
         e.key.length === 1 && 
         !e.ctrlKey && 
         !e.metaKey && 
         !e.altKey && 
-        !e.key.match(/^F\d+$/); // Exclude function keys like F1-F12
+        !e.key.match(/^F\d+$/); // Exclude function keys
       
       if (isPrintableChar && !openSearch) {
-        // Open search popover and set the search term to the pressed key
+        e.preventDefault();
+        
+        // Store the first character
+        const firstChar = e.key;
+        
+        // Open the search popover and focus the input field
         handleSearchButtonClick({ currentTarget: searchButtonRef.current });
-        // Set a small timeout to ensure the search input is ready
+        
+        // Set the search term after a short delay to ensure input is focused
         setTimeout(() => {
-          setSearchTerm(e.key);
-        }, 50);
+          setSearchTerm(firstChar);
+        }, 10);
       }
+      
+      // NOTE: We no longer activate search on random typing - only explicit shortcuts
     };
     
     window.addEventListener('keydown', handleGlobalKeyDown);

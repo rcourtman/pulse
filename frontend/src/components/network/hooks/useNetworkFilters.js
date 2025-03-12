@@ -116,13 +116,55 @@ const useNetworkFilters = () => {
   const addSearchTerm = useCallback((term) => {
     if (!activeSearchTerms.includes(term)) {
       setActiveSearchTerms(prev => [...prev, term]);
+      
+      // Also update the corresponding column filter state
+      const termLower = term.toLowerCase().trim();
+      
+      // Handle status: filters
+      if (termLower.startsWith('status:')) {
+        const status = termLower.split(':', 2)[1]?.trim();
+        if (status === 'running') {
+          setShowStopped(false);
+        } else if (status === 'stopped') {
+          setShowStopped(true);
+        }
+      }
+      
+      // Handle type: filters
+      if (termLower.startsWith('type:')) {
+        const type = termLower.split(':', 2)[1]?.trim();
+        if (type === 'vm' || type === 'qemu') {
+          setGuestTypeFilter('vm');
+        } else if (type === 'ct' || type === 'lxc' || type === 'container') {
+          setGuestTypeFilter('ct');
+        }
+      }
+      
+      // Note: node: filters are handled elsewhere as they require the availableNodes data
     }
-  }, [activeSearchTerms]);
+  }, [activeSearchTerms, setShowStopped, setGuestTypeFilter]);
 
   // Function to remove a search term
   const removeSearchTerm = useCallback((term) => {
     setActiveSearchTerms(prev => prev.filter(t => t !== term));
-  }, []);
+    
+    // Also update the corresponding column filter
+    const termLower = term.toLowerCase().trim();
+    
+    // Handle node: filters - we don't handle this here since selectedNode is managed elsewhere
+    
+    // Handle status: filters
+    if (termLower.startsWith('status:')) {
+      // Reset status filter
+      setShowStopped(null);
+    }
+    
+    // Handle type: filters
+    if (termLower.startsWith('type:')) {
+      // Reset type filter to "all"
+      setGuestTypeFilter('all');
+    }
+  }, [setShowStopped, setGuestTypeFilter]);
 
   // Update filter value
   const updateFilter = useCallback((filterName, newValue) => {
