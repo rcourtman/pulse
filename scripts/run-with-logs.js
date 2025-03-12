@@ -12,14 +12,13 @@
  * Options:
  *   --search=<text>     Search for specific text in logs
  *   --level=<level>     Filter by log level (error, warn, info, debug)
- *   --component=<name>  Filter by component name
- *   --no-cluster        Disable cluster mode
+ *   --component=<n>     Filter by component name
  *   --help              Show this help message
  * 
  * Examples:
  *   node scripts/run-with-logs.js dev
  *   node scripts/run-with-logs.js prod --search=cluster
- *   node scripts/run-with-logs.js dev --no-cluster
+ *   node scripts/run-with-logs.js dev --level=error
  */
 
 const { spawn } = require('child_process');
@@ -28,7 +27,6 @@ const fs = require('fs');
 // Parse command line arguments
 const args = process.argv.slice(2);
 const env = args[0] === 'prod' ? 'prod' : 'dev';
-const noCluster = args.includes('--no-cluster');
 const help = args.includes('--help') || args.includes('-h');
 
 // Show help if requested
@@ -43,13 +41,13 @@ if (help) {
 
 // Extract log options
 const logOptions = args
-  .filter(arg => arg.startsWith('--') && !arg.startsWith('--no-'))
+  .filter(arg => arg.startsWith('--'))
   .join(' ');
 
 // Determine which npm script to run
-const npmScript = noCluster ? `${env}:no-cluster` : env;
+const npmScript = env;
 
-console.log(`Starting application in ${env} mode${noCluster ? ' with cluster mode disabled' : ''}...`);
+console.log(`Starting application in ${env} mode...`);
 
 // Create a unique log file for this run
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

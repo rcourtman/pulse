@@ -3,8 +3,6 @@ import { useState, useEffect, useCallback } from 'react';
 const useKeyboardShortcuts = ({
   openFilters,
   openSearch,
-  openType,
-  openVisibility,
   openColumnMenu,
   resetFilters,
   closeAllPopovers,
@@ -88,8 +86,6 @@ const useKeyboardShortcuts = ({
   }, [
     openFilters, 
     openSearch, 
-    openType, 
-    openVisibility, 
     openColumnMenu, 
     escRecentlyPressed,
     resetFilters,

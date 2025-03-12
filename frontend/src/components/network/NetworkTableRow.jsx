@@ -5,7 +5,9 @@ import {
   Typography,
   Box,
   Chip,
-  Tooltip
+  Tooltip,
+  alpha,
+  useTheme
 } from '@mui/material';
 import { StatusIndicator, ProgressWithLabel } from './UIComponents';
 import { formatBytes, formatNetworkRate, formatUptime, formatPercentage, formatBytesWithUnit } from '../../utils/formatters';
@@ -20,8 +22,16 @@ const NetworkTableRow = ({
   columnOrder,
   activeFilteredColumns = {}
 }) => {
+  const theme = useTheme();
+  
   // Determine if the guest is running
   const isRunning = guest.status?.toLowerCase() === 'running';
+  
+  // Determine if this is a shared guest (ID 999 or 888)
+  const isSharedGuest = guest.vmid === 999 || guest.vmid === 888;
+  
+  // If the guest is running and it's a shared guest, it's on its primary node
+  const isPrimaryNode = isSharedGuest && isRunning;
   
   // Get metrics for this guest
   const cpuMetrics = metrics?.cpu?.[guest?.id] || null;
@@ -84,28 +94,48 @@ const NetworkTableRow = ({
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="body2" noWrap>
               {getNodeName(guest?.node)}
+              {isSharedGuest && isPrimaryNode && (
+                <Tooltip title="Primary Node - This node is currently running this shared guest">
+                  <Box component="span" sx={{ 
+                    display: 'inline-block',
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: 'primary.main',
+                    opacity: 0.6,
+                    ml: 1,
+                    verticalAlign: 'middle'
+                  }} />
+                </Tooltip>
+              )}
             </Typography>
           </Box>
         );
       case 'type':
         return (
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              color: isVM ? 'primary.main' : 'secondary.main',
-              fontWeight: 'medium',
-              fontSize: '0.7rem',
-              padding: '2px 4px',
-              border: '1px solid',
-              borderColor: isVM ? 'primary.main' : 'secondary.main',
-              borderRadius: '4px',
-              display: 'inline-block',
-              lineHeight: 1,
-              textAlign: 'center'
-            }}
-          >
-            {guestTypeLabel}
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            width: '100%',
+            height: '100%'
+          }}>
+            <Tooltip title={isVM ? 'Virtual Machine' : 'Container'}>
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    bgcolor: isVM ? '#1976d2' : theme.palette.secondary.main, // primary blue for VM, secondary for CT
+                    boxShadow: theme.palette.mode === 'dark' 
+                      ? `0 0 0 1px ${alpha(isVM ? '#1976d2' : theme.palette.secondary.main, 0.5)}` 
+                      : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          </Box>
         );
       case 'id':
         return (
@@ -131,9 +161,11 @@ const NetworkTableRow = ({
         );
       case 'name':
         return (
-          <Typography variant="body2" noWrap>
-            {guest?.name}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Typography variant="body2" noWrap>
+              {guest?.name}
+            </Typography>
+          </Box>
         );
       case 'cpu':
         return (
@@ -201,7 +233,9 @@ const NetworkTableRow = ({
               sx={{ 
                 width: columnWidths?.[column.id] || 'auto',
                 minWidth: getMinWidthForColumn(column.id),
-                backgroundColor: activeFilteredColumns[column.id] ? 'rgba(25, 118, 210, 0.04)' : 'inherit',
+                backgroundColor: activeFilteredColumns[column.id] 
+                  ? 'rgba(25, 118, 210, 0.08)' // Light blue highlight that's more visible but still neutral
+                  : 'inherit',
                 ...(column.id === 'status' && {
                   textAlign: 'center',
                   padding: '0px 8px'
@@ -232,7 +266,7 @@ const getMinWidthForColumn = (columnId) => {
     disk: 100,
     download: 90,
     upload: 90,
-    uptime: 70
+    uptime: 85    // Increased from 70px to accommodate longer uptime strings
   };
   
   return minWidths[columnId] || 90;

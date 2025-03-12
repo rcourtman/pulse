@@ -17,6 +17,7 @@ import path from 'path';
 import { vmTemplates, containerTemplates } from './templates';
 import { customMockData } from './custom-data';
 import { createLogger } from '../utils/logger';
+import { ProxmoxEvent } from '../types';
 
 const logger = createLogger('MockServer');
 
@@ -164,6 +165,101 @@ interface MockMetric {
   };
 }
 
+// Add a new map to track the primary node for each guest in cluster mode
+const primaryNodeForGuest = new Map<string, string>();
+
+// Function to initialize primary nodes for guests
+const initializePrimaryNodes = () => {
+  logger.info('Initializing primary nodes for guests...');
+  
+  // Reset the map
+  primaryNodeForGuest.clear();
+  
+  // First, identify all shared guests (those that exist on multiple nodes)
+  const guestNodeMap = new Map<string, string[]>();
+  
+  // Build a map of guest IDs to the nodes they exist on
+  for (const [nodeId, nodeGuests] of guests.entries()) {
+    for (const guest of nodeGuests) {
+      if (!guestNodeMap.has(guest.id)) {
+        guestNodeMap.set(guest.id, []);
+      }
+      guestNodeMap.get(guest.id)?.push(nodeId);
+    }
+  }
+  
+  // Log shared guests for debugging
+  for (const [guestId, nodeIds] of guestNodeMap.entries()) {
+    if (nodeIds.length > 1) {
+      logger.info(`Found shared guest ${guestId} on nodes: ${nodeIds.join(', ')}`);
+    }
+  }
+  
+  // Now assign primary nodes, prioritizing the first node alphabetically for consistency
+  for (const [guestId, nodeIds] of guestNodeMap.entries()) {
+    // Sort node IDs alphabetically for consistent assignment
+    const sortedNodeIds = [...nodeIds].sort();
+    const primaryNodeId = sortedNodeIds[0];
+    primaryNodeForGuest.set(guestId, primaryNodeId);
+    logger.info(`Assigned primary node ${primaryNodeId} for guest ${guestId}`);
+    
+    // Update the guest status on all nodes
+    for (const [nodeId, nodeGuests] of guests.entries()) {
+      for (let i = 0; i < nodeGuests.length; i++) {
+        const guest = nodeGuests[i];
+        if (guest.id === guestId) {
+          // Update status based on whether this is the primary node
+          const isPrimary = nodeId === primaryNodeId;
+          
+          // Log the status change
+          logger.info(`Setting guest ${guestId} on node ${nodeId} to ${isPrimary ? 'running' : 'stopped'} (isPrimary: ${isPrimary})`);
+          
+          // Create a new guest object with updated status and resources
+          const updatedGuest = {
+            ...guest,
+            status: isPrimary ? 'running' : 'stopped',
+            // For non-primary nodes, also zero out CPU usage and memory used
+            cpu: isPrimary ? guest.cpu : 0,
+            memory: isPrimary 
+              ? guest.memory 
+              : (typeof guest.memory === 'number' 
+                ? 0 
+                : { ...guest.memory, used: 0 })
+          };
+          
+          // Replace the guest in the array
+          nodeGuests[i] = updatedGuest;
+          
+          // Log the updated guest object
+          logger.info(`Updated guest ${guestId} on node ${nodeId}: status=${updatedGuest.status}, cpu=${typeof updatedGuest.cpu === 'number' ? updatedGuest.cpu : JSON.stringify(updatedGuest.cpu)}, memory=${typeof updatedGuest.memory === 'number' ? updatedGuest.memory : JSON.stringify(updatedGuest.memory)}`);
+        }
+      }
+    }
+  }
+  
+  logger.info('Primary node initialization complete');
+};
+
+// Call this function during server initialization
+initializePrimaryNodes();
+
+// Function to check if a node is the primary for a guest
+const isNodePrimaryForGuest = (nodeId: string, guestId: string): boolean => {
+  const primaryNodeId = primaryNodeForGuest.get(guestId);
+  const isPrimary = primaryNodeId === nodeId;
+  
+  // Only log for shared guests (those that exist on multiple nodes)
+  const nodeIds = Array.from(guests.entries())
+    .filter(([_, nodeGuests]) => nodeGuests.some((guest: MockVM) => guest.id === guestId))
+    .map(([nodeId]) => nodeId);
+  
+  if (nodeIds.length > 1) {
+    logger.debug(`isNodePrimaryForGuest: Guest ${guestId} on node ${nodeId}, primaryNode=${primaryNodeId}, isPrimary=${isPrimary}`);
+  }
+  
+  return isPrimary;
+};
+
 // REST API endpoints
 app.get('/api/nodes', (req, res) => {
   res.json({ nodes: Array.from(nodes.values()) });
@@ -187,9 +283,15 @@ const generateGuests = (): MockVM[] => {
 const generateMetrics = (nodeId: string, nodeGuests: MockVM[]): MockMetric[] => {
   const generatedMetrics: MockMetric[] = [];
   
+  // Log the number of guests passed to generateMetrics
+  logger.debug(`Generating metrics for node ${nodeId} with ${nodeGuests.length} guests`);
+  
   // Process each guest
   nodeGuests.forEach((guest: MockVM) => {
-    if (guest.status === 'running') {
+    // Only generate metrics for running guests where this node is primary
+    // This ensures only the primary node generates metrics for a guest
+    if (guest.status === 'running' && isNodePrimaryForGuest(nodeId, guest.id)) {
+      logger.debug(`Generating metrics for guest ${guest.id} on node ${nodeId} (primary node)`);
       // Generate random metrics
       const cpuUsage = typeof guest.cpu === 'number' ? guest.cpu * 100 : guest.cpu.usage * 100;
       
@@ -252,6 +354,8 @@ const generateMetrics = (nodeId: string, nodeGuests: MockVM[]): MockMetric[] => 
 
 // Send initial data to the client
 const sendInitialData = (socket: Socket) => {
+  logger.info(`Sending initial data to client ${socket.id}`);
+  
   // Convert nodes map to array
   const nodeArray = Array.from(nodes.values());
   
@@ -264,12 +368,33 @@ const sendInitialData = (socket: Socket) => {
   if (clientInfo?.nodeId) {
     // Client has registered for a specific node
     const nodeId = clientInfo.nodeId;
+    logger.info(`Client ${socket.id} is registered for node ${nodeId}`);
     
     // Get the node's guests
     const nodeGuests = guests.get(nodeId) || [];
+    logger.info(`Node ${nodeId} has ${nodeGuests.length} guests`);
+    
+    // Log the status of each guest before processing
+    nodeGuests.forEach((guest: MockVM) => {
+      const isPrimary = isNodePrimaryForGuest(nodeId, guest.id);
+      logger.info(`Guest ${guest.id} on node ${nodeId}: status=${guest.status}, isPrimary=${isPrimary}`);
+    });
     
     // Process guest data to ensure it has the right format
     const processedGuests = nodeGuests.map((guest: MockVM) => {
+      // Check if this node is primary for this guest, regardless of cluster mode
+      const isPrimary = isNodePrimaryForGuest(nodeId, guest.id);
+      
+      // If this is not the primary node, mark the guest as stopped
+      if (!isPrimary && guest.status === 'running') {
+        logger.info(`Marking non-primary guest ${guest.id} on node ${nodeId} as stopped (was running)`);
+        return {
+          ...guest,
+          status: 'stopped',
+          memory: typeof guest.memory === 'number' ? { total: guest.memory, used: 0 } : { ...guest.memory, used: 0 }
+        };
+      }
+      
       // Handle different memory structures
       const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
       
@@ -279,11 +404,22 @@ const sendInitialData = (socket: Socket) => {
       };
     });
     
+    // Log the status of each guest after processing
+    processedGuests.forEach((guest: MockVM) => {
+      const isPrimary = isNodePrimaryForGuest(nodeId, guest.id);
+      logger.info(`Processed guest ${guest.id} on node ${nodeId}: status=${guest.status}, isPrimary=${isPrimary}`);
+    });
+    
     // Send guest data for this node
     socket.emit('guests', { guests: processedGuests });
     
-    // Generate and send metrics for this node
-    const nodeMetrics = generateMetrics(nodeId, nodeGuests);
+    // Generate and send metrics for this node - but only for running guests
+    const runningGuests = processedGuests.filter((guest: MockVM) => 
+      guest.status === 'running' && isNodePrimaryForGuest(nodeId, guest.id)
+    );
+    logger.info(`Node ${nodeId} has ${runningGuests.length} running guests where it is primary`);
+    
+    const nodeMetrics = generateMetrics(nodeId, runningGuests);
     metrics.set(nodeId, nodeMetrics);
     socket.emit('metrics', { metrics: nodeMetrics });
     
@@ -300,6 +436,18 @@ const sendInitialData = (socket: Socket) => {
     for (const [nodeId, nodeGuests] of guests.entries()) {
       // Process guest data
       const processedGuests = nodeGuests.map((guest: MockVM) => {
+        // Check if this node is primary for this guest, regardless of cluster mode
+        const isPrimary = isNodePrimaryForGuest(nodeId, guest.id);
+        
+        // If this is not the primary node, mark the guest as stopped
+        if (!isPrimary && guest.status === 'running') {
+          return {
+            ...guest,
+            status: 'stopped',
+            memory: typeof guest.memory === 'number' ? { total: guest.memory, used: 0 } : { ...guest.memory, used: 0 }
+          };
+        }
+        
         return {
           ...guest,
           memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
@@ -309,8 +457,11 @@ const sendInitialData = (socket: Socket) => {
       // Add to all guests
       allGuests.push(...processedGuests);
       
-      // Generate metrics for this node
-      const nodeMetrics = generateMetrics(nodeId, nodeGuests);
+      // Generate metrics for this node - but only for running guests where this node is primary
+      const runningGuests = processedGuests.filter((guest: MockVM) => 
+        guest.status === 'running' && isNodePrimaryForGuest(nodeId, guest.id)
+      );
+      const nodeMetrics = generateMetrics(nodeId, runningGuests);
       metrics.set(nodeId, nodeMetrics);
       allMetrics.push(...nodeMetrics);
     }
@@ -325,65 +476,167 @@ const sendInitialData = (socket: Socket) => {
   }
 };
 
+/**
+ * Get the node ID associated with a socket
+ */
+const getNodeIdFromSocket = (socket: Socket): string | undefined => {
+  const clientInfo = clients.get(socket.id);
+  return clientInfo?.nodeId;
+};
+
 // Function to update metrics for a socket
 const updateMetrics = (socket: Socket) => {
-  // Get client info
-  const clientInfo = clients.get(socket.id);
+  // Get the node ID from the socket
+  const nodeId = getNodeIdFromSocket(socket);
+  if (!nodeId) {
+    return;
+  }
   
-  // If the client has registered for a specific node, update that node's data
-  // Otherwise, update data for all nodes
-  if (clientInfo?.nodeId) {
-    // Update data for the specific node
-    const nodeId = clientInfo.nodeId;
-    
-    // Get the node's guests
-    const nodeGuests = guests.get(nodeId) || [];
-    if (!nodeGuests || nodeGuests.length === 0) {
-      logger.warn(`No guests found for node ${nodeId}`);
-      return;
-    }
-    
-    // Get current metrics
-    const currentMetrics = metrics.get(nodeId) || [];
-    
-    // Update metrics
-    const updatedMetrics = currentMetrics.map((metric: MockMetric) => {
+  // Get the guests for this node
+  const nodeGuests = guests.get(nodeId) || [];
+  if (nodeGuests.length === 0) {
+    return;
+  }
+  
+  // Get the current metrics for this node
+  const currentMetrics = metrics.get(nodeId) || [];
+  if (currentMetrics.length === 0) {
+    return;
+  }
+  
+  // Filter to only include metrics for running guests where this node is primary
+  // This ensures only the primary node sends metrics for a guest, regardless of cluster mode
+  const runningGuests = nodeGuests.filter((guest: MockVM) => 
+    guest.status === 'running' && isNodePrimaryForGuest(nodeId, guest.id)
+  );
+  const runningGuestIds = new Set(runningGuests.map((guest: MockVM) => guest.id));
+  
+  // Log the number of running guests where this node is primary
+  logger.debug(`Node ${nodeId} has ${runningGuests.length} running guests where it is primary`);
+  
+  // Update metrics for each running guest
+  const updatedMetrics = currentMetrics
+    .filter((metric: MockMetric) => runningGuestIds.has(metric.guestId))
+    .map((metric: MockMetric) => {
       const guest = nodeGuests.find((g: MockVM) => g.id === metric.guestId);
-      if (!guest || guest.status !== 'running') {
+      // Double-check that this is still a running guest and this node is primary
+      if (!guest || guest.status !== 'running' || !isNodePrimaryForGuest(nodeId, guest.id)) {
         return metric;
       }
       
-      // Update CPU usage (slight variation from previous value)
+      // For primary node, continue with normal metric updates
+      // Update CPU usage with more dynamic variations
       const currentCpu = metric.metrics.cpu;
-      const cpuDelta = randomFloatBetween(-5, 5);
+      
+      // Create more realistic CPU patterns - sometimes spikes, sometimes gradual changes
+      let cpuDelta;
+      if (Math.random() < 0.1) {
+        // 10% chance of a significant spike or drop
+        cpuDelta = randomFloatBetween(-15, 15);
+      } else if (Math.random() < 0.3) {
+        // 30% chance of a moderate change
+        cpuDelta = randomFloatBetween(-8, 8);
+      } else {
+        // 60% chance of a small change
+        cpuDelta = randomFloatBetween(-3, 3);
+      }
+      
+      // Apply trend bias - if CPU is high, more likely to go down, if low, more likely to go up
+      if (currentCpu > 70) {
+        cpuDelta -= 1; // Bias towards decreasing when high
+      } else if (currentCpu < 20) {
+        cpuDelta += 1; // Bias towards increasing when low
+      }
+      
       const newCpu = Math.max(1, Math.min(100, currentCpu + cpuDelta));
       
-      // Update memory usage (slight variation from previous value)
+      // Update memory usage with more realistic variations
       const currentMemoryPercent = metric.metrics.memory.percentUsed;
-      const memoryDelta = randomFloatBetween(-2, 2);
+      
+      // Memory tends to change more gradually than CPU
+      let memoryDelta;
+      if (Math.random() < 0.05) {
+        // 5% chance of a larger memory change (application started/stopped)
+        memoryDelta = randomFloatBetween(-8, 8);
+      } else if (Math.random() < 0.2) {
+        // 20% chance of a moderate change
+        memoryDelta = randomFloatBetween(-4, 4);
+      } else {
+        // 75% chance of a small change
+        memoryDelta = randomFloatBetween(-2, 2);
+      }
+      
+      // Memory often correlates with CPU changes
+      if (cpuDelta > 5) {
+        memoryDelta += 1; // If CPU spiked up, memory likely increases too
+      } else if (cpuDelta < -5) {
+        memoryDelta -= 0.5; // If CPU dropped significantly, memory might decrease too
+      }
+      
       const newMemoryPercent = Math.max(5, Math.min(95, currentMemoryPercent + memoryDelta));
       
       // Check if memory is a number or an object
       const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
       const newMemoryUsed = (memoryTotal * newMemoryPercent) / 100;
       
-      // Update disk usage (slight variation from previous value)
+      // Update disk usage (disk changes are typically slower than CPU/memory)
       const diskTotal = guest.disk?.total || 1073741824; // 1GB default
       const diskUsed = guest.disk?.used || 536870912; // 512MB default
       const currentDiskPercent = diskUsed / diskTotal * 100;
-      const diskDelta = randomFloatBetween(-1, 1);
-      const newDiskPercent = Math.max(1, Math.min(99, currentDiskPercent + diskDelta));
+      
+      // Disk usage typically increases slowly over time with occasional drops (cleanup)
+      let diskDelta;
+      if (Math.random() < 0.02) {
+        // 2% chance of disk cleanup (significant drop)
+        diskDelta = randomFloatBetween(-5, -1);
+      } else if (Math.random() < 0.1) {
+        // 10% chance of a larger increase (file download, log growth)
+        diskDelta = randomFloatBetween(0.5, 2);
+      } else {
+        // 88% chance of a very small increase
+        diskDelta = randomFloatBetween(0, 0.5);
+      }
+      
+      const newDiskPercent = Math.max(10, Math.min(90, currentDiskPercent + diskDelta));
       const newDiskUsed = (diskTotal * newDiskPercent) / 100;
       
-      // Update network throughput
-      const newInRate = randomFloatBetween(0.1, 50);
-      const newOutRate = randomFloatBetween(0.1, 20);
+      // Update network usage with more noticeable variations
+      const currentNetworkIn = metric.metrics.network.inRate;
+      const currentNetworkOut = metric.metrics.network.outRate;
       
-      // Update history
-      const newCpuHistory = [...metric.history.cpu.slice(1), newCpu];
-      const newMemoryHistory = [...metric.history.memory.slice(1), newMemoryPercent];
-      const newDiskHistory = [...(metric.history.disk || Array(10).fill(0)), newDiskPercent].slice(-10);
+      // Network traffic often comes in bursts
+      let networkInDelta, networkOutDelta;
       
+      if (Math.random() < 0.15) {
+        // 15% chance of a traffic burst
+        networkInDelta = randomFloatBetween(100000, 1000000);
+        networkOutDelta = randomFloatBetween(50000, 500000);
+      } else if (Math.random() < 0.3) {
+        // 30% chance of moderate traffic
+        networkInDelta = randomFloatBetween(-200000, 400000);
+        networkOutDelta = randomFloatBetween(-100000, 300000);
+      } else {
+        // 55% chance of low/declining traffic
+        networkInDelta = randomFloatBetween(-300000, 100000);
+        networkOutDelta = randomFloatBetween(-200000, 50000);
+      }
+      
+      const newNetworkIn = Math.max(0, currentNetworkIn + networkInDelta);
+      const newNetworkOut = Math.max(0, currentNetworkOut + networkOutDelta);
+      
+      // Update network history
+      const networkHistory = [...metric.metrics.network.history.slice(1), { in: newNetworkIn, out: newNetworkOut }];
+      
+      // Update CPU history
+      const cpuHistory = [...metric.history.cpu.slice(1), newCpu];
+      
+      // Update memory history
+      const memoryHistory = [...metric.history.memory.slice(1), newMemoryPercent];
+      
+      // Update disk history (less frequent changes)
+      const diskHistory = [...metric.history.disk.slice(1), newDiskPercent];
+      
+      // Return updated metric
       return {
         ...metric,
         timestamp: Date.now(),
@@ -402,133 +655,25 @@ const updateMetrics = (socket: Socket) => {
           },
           network: {
             ...metric.metrics.network,
-            inRate: newInRate,
-            outRate: newOutRate,
-            history: [...metric.metrics.network.history.slice(1), { in: newInRate, out: newOutRate }]
+            inRate: newNetworkIn,
+            outRate: newNetworkOut,
+            history: networkHistory
           }
         },
         history: {
           ...metric.history,
-          cpu: newCpuHistory,
-          memory: newMemoryHistory,
-          disk: newDiskHistory
+          cpu: cpuHistory,
+          memory: memoryHistory,
+          disk: diskHistory
         }
       };
     });
-    
-    // Store updated metrics
-    metrics.set(nodeId, updatedMetrics);
-    
-    // Send updated data
-    socket.emit('guests', { guests: nodeGuests });
-    socket.emit('metrics', { metrics: updatedMetrics });
-  } else {
-    // Client hasn't registered for a specific node, update all nodes
-    // This is useful for the dashboard view
-    
-    // Get all guests and metrics
-    const allGuests = [];
-    const allMetrics = [];
-    const updatedMetricsByNode = new Map();
-    
-    // Process each node
-    for (const [nodeId, nodeGuests] of guests.entries()) {
-      // Process guest data
-      const processedGuests = nodeGuests.map((guest: MockVM) => {
-        return {
-          ...guest,
-          memory: typeof guest.memory === 'number' ? { total: guest.memory, used: Math.floor(guest.memory * 0.7) } : guest.memory
-        };
-      });
-      
-      // Add to all guests
-      allGuests.push(...processedGuests);
-      
-      // Get current metrics for this node
-      const currentMetrics = metrics.get(nodeId) || [];
-      
-      // Update metrics for this node
-      const updatedMetrics = currentMetrics.map((metric: MockMetric) => {
-        const guest = nodeGuests.find((g: MockVM) => g.id === metric.guestId);
-        if (!guest || guest.status !== 'running') {
-          return metric;
-        }
-        
-        // Update CPU usage (slight variation from previous value)
-        const currentCpu = metric.metrics.cpu;
-        const cpuDelta = randomFloatBetween(-5, 5);
-        const newCpu = Math.max(1, Math.min(100, currentCpu + cpuDelta));
-        
-        // Update memory usage (slight variation from previous value)
-        const currentMemoryPercent = metric.metrics.memory.percentUsed;
-        const memoryDelta = randomFloatBetween(-2, 2);
-        const newMemoryPercent = Math.max(5, Math.min(95, currentMemoryPercent + memoryDelta));
-        
-        // Check if memory is a number or an object
-        const memoryTotal = typeof guest.memory === 'number' ? guest.memory : guest.memory.total;
-        const newMemoryUsed = (memoryTotal * newMemoryPercent) / 100;
-        
-        // Update disk usage (slight variation from previous value)
-        const diskTotal = guest.disk?.total || 1073741824; // 1GB default
-        const diskUsed = guest.disk?.used || 536870912; // 512MB default
-        const currentDiskPercent = diskUsed / diskTotal * 100;
-        const diskDelta = randomFloatBetween(-1, 1);
-        const newDiskPercent = Math.max(1, Math.min(99, currentDiskPercent + diskDelta));
-        const newDiskUsed = (diskTotal * newDiskPercent) / 100;
-        
-        // Update network throughput
-        const newInRate = randomFloatBetween(0.1, 50);
-        const newOutRate = randomFloatBetween(0.1, 20);
-        
-        // Update history
-        const newCpuHistory = [...metric.history.cpu.slice(1), newCpu];
-        const newMemoryHistory = [...metric.history.memory.slice(1), newMemoryPercent];
-        const newDiskHistory = [...(metric.history.disk || Array(10).fill(0)), newDiskPercent].slice(-10);
-        
-        return {
-          ...metric,
-          timestamp: Date.now(),
-          metrics: {
-            ...metric.metrics,
-            cpu: newCpu,
-            memory: {
-              ...metric.metrics.memory,
-              used: newMemoryUsed,
-              percentUsed: newMemoryPercent
-            },
-            disk: {
-              ...metric.metrics.disk,
-              used: newDiskUsed,
-              percentUsed: newDiskPercent
-            },
-            network: {
-              ...metric.metrics.network,
-              inRate: newInRate,
-              outRate: newOutRate,
-              history: [...metric.metrics.network.history.slice(1), { in: newInRate, out: newOutRate }]
-            }
-          },
-          history: {
-            ...metric.history,
-            cpu: newCpuHistory,
-            memory: newMemoryHistory,
-            disk: newDiskHistory
-          }
-        };
-      });
-      
-      // Store updated metrics for this node
-      metrics.set(nodeId, updatedMetrics);
-      updatedMetricsByNode.set(nodeId, updatedMetrics);
-      
-      // Add to all metrics
-      allMetrics.push(...updatedMetrics);
-    }
-    
-    // Send updated data
-    socket.emit('guests', { guests: allGuests });
-    socket.emit('metrics', { metrics: allMetrics });
-  }
+  
+  // Update metrics for this node
+  metrics.set(nodeId, updatedMetrics);
+  
+  // Emit metrics update to the client
+  socket.emit('metrics', { metrics: updatedMetrics });
 };
 
 // Socket.io connection handling
@@ -613,6 +758,138 @@ io.on('connection', (socket) => {
     }
   });
 });
+
+// Add a function to occasionally migrate guests between nodes
+const migrateRandomGuest = () => {
+  // Get all guest IDs
+  const guestIds = Array.from(primaryNodeForGuest.keys());
+  if (guestIds.length === 0) {
+    return;
+  }
+  
+  // Focus on shared guests (IDs 999 and 888) to make migrations more visible
+  const sharedGuestIds = guestIds.filter(id => id === '999' || id === '888');
+  
+  // If no shared guests found, fall back to any guest
+  const targetGuestIds = sharedGuestIds.length > 0 ? sharedGuestIds : guestIds;
+  
+  // Pick a random guest from our target list
+  const randomGuestId = targetGuestIds[Math.floor(Math.random() * targetGuestIds.length)];
+  
+  // Get current primary node
+  const currentPrimaryNode = primaryNodeForGuest.get(randomGuestId);
+  if (!currentPrimaryNode) {
+    return;
+  }
+  
+  // Get all nodes that have this guest
+  const nodesWithGuest = Array.from(guests.entries())
+    .filter(([nodeId, nodeGuests]) => 
+      nodeGuests.some((guest: MockVM) => guest.id === randomGuestId))
+    .map(([nodeId]) => nodeId);
+  
+  if (nodesWithGuest.length <= 1) {
+    return; // Can't migrate if guest is only on one node
+  }
+  
+  // Pick a different node as the new primary
+  const otherNodes = nodesWithGuest.filter(nodeId => nodeId !== currentPrimaryNode);
+  if (otherNodes.length === 0) {
+    return;
+  }
+  
+  const newPrimaryNode = otherNodes[Math.floor(Math.random() * otherNodes.length)];
+  
+  // Update the primary node
+  primaryNodeForGuest.set(randomGuestId, newPrimaryNode);
+  
+  // Make the log message more visible
+  logger.info(`🔄 MIGRATION: Guest ${randomGuestId} migrated from node ${currentPrimaryNode} to ${newPrimaryNode}`);
+  
+  // Get the guest name
+  const guestName = Array.from(guests.values())
+    .flatMap(nodeGuests => nodeGuests)
+    .find((guest: any) => guest.id === randomGuestId)?.name || 'Unknown';
+  
+  // Create a migration event object that matches the ProxmoxEvent interface
+  const migrationEvent: ProxmoxEvent = {
+    id: `migration-${Date.now()}`,
+    node: newPrimaryNode,
+    type: 'vm', // or 'container' based on the guest type
+    eventTime: Date.now(),
+    user: 'system',
+    description: `Migration of ${guestName} from ${currentPrimaryNode} to ${newPrimaryNode}`,
+    details: {
+      type: 'migration',
+      guestId: randomGuestId,
+      guestName: guestName,
+      fromNode: currentPrimaryNode,
+      toNode: newPrimaryNode,
+      timestamp: Date.now()
+    }
+  };
+  
+  // Emit to all connected clients
+  io.emit('event', migrationEvent);
+  
+  // Update the guest status on all nodes
+  for (const [nodeId, nodeGuests] of guests.entries()) {
+    for (let i = 0; i < nodeGuests.length; i++) {
+      // Explicitly type the guest to avoid linter errors
+      const guest: {
+        id: string;
+        status: string;
+        cpu: number | { usage: number; cores?: number; };
+        memory: number | { total: number; used: number; };
+        [key: string]: any;
+      } = nodeGuests[i];
+      
+      if (guest.id === randomGuestId) {
+        // Update status based on whether this is the new primary node
+        const isPrimary = nodeId === newPrimaryNode;
+        
+        // Store the original CPU and memory values from the current primary node
+        let originalCpu = guest.cpu;
+        let originalMemory = guest.memory;
+        
+        // If this is the current primary node, save its values before changing
+        if (nodeId === currentPrimaryNode) {
+          // Save the current values to use for the new primary
+          originalCpu = guest.cpu;
+          originalMemory = guest.memory;
+        }
+        
+        // If this is the new primary node, we need to get the CPU and memory values from the old primary
+        if (isPrimary) {
+          // Find the guest on the old primary node to get its values
+          const oldPrimaryGuest = guests.get(currentPrimaryNode)?.find((g: MockVM) => g.id === randomGuestId);
+          if (oldPrimaryGuest) {
+            originalCpu = oldPrimaryGuest.cpu;
+            originalMemory = oldPrimaryGuest.memory;
+          }
+        }
+        
+        nodeGuests[i] = {
+          ...guest,
+          status: isPrimary ? 'running' : 'stopped',
+          // For non-primary nodes, zero out CPU usage and memory used
+          cpu: isPrimary ? originalCpu : 0,
+          memory: isPrimary 
+            ? originalMemory 
+            : (typeof guest.memory === 'number' 
+              ? 0 
+              : { ...guest.memory, used: 0 })
+        };
+        
+        // Log the status change for each node
+        logger.info(`Guest ${randomGuestId} on node ${nodeId}: status=${isPrimary ? 'running' : 'stopped'} (isPrimary=${isPrimary})`);
+      }
+    }
+  }
+};
+
+// Set up more frequent migrations (every 10 seconds instead of 30)
+setInterval(migrateRandomGuest, 10000);
 
 // Start the server
 server.listen(PORT, HOST, () => {

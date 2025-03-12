@@ -4,11 +4,24 @@ import { createLogger } from '../utils/logger';
 import { nodeManager } from '../services/node-manager';
 import { metricsService } from '../services/metrics-service';
 import { WebSocketMessageType, WebSocketMessage, MetricsData, ProxmoxEvent, ProxmoxNodeStatus, ProxmoxGuest } from '../types';
+import config from '../config';
 
 export class WebSocketServer {
   private io: Server;
   private logger = createLogger('WebSocketServer');
   private connectedClients: number = 0;
+  // Add a map to track the last time metrics were sent for each guest
+  private lastMetricsSentTime: Map<string, number> = new Map();
+  // Minimum time between metrics updates for the same guest (in milliseconds)
+  private readonly metricsUpdateThreshold: number = 1000;
+  // Track connection attempts by IP to prevent connection storms
+  private connectionAttempts: Map<string, { count: number, lastAttempt: number }> = new Map();
+  // Maximum connection attempts allowed in the throttle window
+  private readonly maxConnectionAttemptsPerWindow: number = 10;
+  // Throttle window in milliseconds (20 seconds)
+  private readonly connectionThrottleWindow: number = 20000;
+  // Check if we're in development mode
+  private readonly isDevelopment: boolean = process.env.NODE_ENV === 'development';
 
   constructor(httpServer: HttpServer) {
     this.io = new Server(httpServer, {
@@ -54,12 +67,59 @@ export class WebSocketServer {
         allowedHeaders: ['*']
       }
     });
+    
+    // Only set up cleanup if throttling is enabled (not in development)
+    if (!this.isDevelopment) {
+      // Clean up connection attempts map periodically
+      setInterval(() => {
+        const now = Date.now();
+        for (const [ip, data] of this.connectionAttempts.entries()) {
+          if (now - data.lastAttempt > this.connectionThrottleWindow) {
+            this.connectionAttempts.delete(ip);
+          }
+        }
+      }, 60000); // Clean up every minute
+    }
   }
 
   /**
    * Set up socket connection handlers
    */
   private setupSocketHandlers(): void {
+    // Add middleware to throttle connections - skip in development mode
+    if (!this.isDevelopment) {
+      this.io.use((socket, next) => {
+        const clientIp = socket.handshake.address;
+        
+        // Check if this IP is being throttled
+        const attempts = this.connectionAttempts.get(clientIp) || { count: 0, lastAttempt: 0 };
+        const now = Date.now();
+        
+        // Reset count if outside the throttle window
+        if (now - attempts.lastAttempt > this.connectionThrottleWindow) {
+          attempts.count = 1;
+          attempts.lastAttempt = now;
+        } else {
+          // Increment count if within the throttle window
+          attempts.count++;
+          attempts.lastAttempt = now;
+        }
+        
+        // Update the map
+        this.connectionAttempts.set(clientIp, attempts);
+        
+        // Check if we should throttle
+        if (attempts.count > this.maxConnectionAttemptsPerWindow) {
+          this.logger.warn(`Connection throttled for ${clientIp} - too many attempts (${attempts.count}) within ${this.connectionThrottleWindow}ms`);
+          return next(new Error('Too many connection attempts, please try again later'));
+        }
+        
+        next();
+      });
+    } else {
+      this.logger.info('Connection throttling disabled in development mode');
+    }
+
     this.io.on('connection', (socket: Socket) => {
       this.connectedClients++;
       this.logger.info(`Client connected: ${socket.id}. Total clients: ${this.connectedClients}`);
@@ -121,6 +181,27 @@ export class WebSocketServer {
           callback({ timestamp: Date.now(), status: 'ok' });
         }
       });
+      
+      // Handle explicit request for node data
+      socket.on('requestNodeData', () => {
+        this.logger.debug(`Client ${socket.id} requested node data`);
+        const nodes = nodeManager.getNodes();
+        socket.emit('message', this.createMessage(WebSocketMessageType.NODE_STATUS_UPDATE, nodes));
+      });
+      
+      // Handle explicit request for guest data
+      socket.on('requestGuestData', () => {
+        this.logger.debug(`Client ${socket.id} requested guest data`);
+        const guests = nodeManager.getGuests();
+        socket.emit('message', this.createMessage(WebSocketMessageType.GUEST_STATUS_UPDATE, guests));
+      });
+      
+      // Handle explicit request for metrics data
+      socket.on('requestMetricsData', () => {
+        this.logger.debug(`Client ${socket.id} requested metrics data`);
+        const metrics = metricsService.getAllCurrentMetrics();
+        socket.emit('message', this.createMessage(WebSocketMessageType.METRICS_UPDATE, metrics));
+      });
     });
 
     // Log any errors
@@ -140,6 +221,22 @@ export class WebSocketServer {
   private subscribeToEvents(): void {
     // Subscribe to metrics updates
     metricsService.on('metricsUpdated', (metrics: MetricsData) => {
+      // Apply throttling for guest metrics in cluster mode
+      if (config.clusterMode && metrics.guestId) {
+        const now = Date.now();
+        const lastSentTime = this.lastMetricsSentTime.get(metrics.guestId) || 0;
+        
+        // Check if we've sent metrics for this guest recently
+        if (now - lastSentTime < this.metricsUpdateThreshold) {
+          // Skip this update to prevent rapid cycling
+          this.logger.debug(`Throttling metrics update for guest ${metrics.guestId} - too soon since last update`);
+          return;
+        }
+        
+        // Update the last sent time
+        this.lastMetricsSentTime.set(metrics.guestId, now);
+      }
+      
       this.sendMessage(WebSocketMessageType.METRICS_UPDATE, metrics);
       
       // Send to specific rooms

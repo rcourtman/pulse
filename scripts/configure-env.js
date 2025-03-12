@@ -33,18 +33,6 @@ const envConfigs = {
     USE_MOCK_DATA: 'false',
     MOCK_DATA_ENABLED: 'false',
     PROXMOX_AUTO_DETECT_CLUSTER: 'true',
-    PROXMOX_CLUSTER_MODE: 'true',
-    MOCK_CLUSTER_ENABLED: 'false',
-    DOCKERFILE: 'docker/Dockerfile'
-  },
-  'prod:no-cluster': {
-    NODE_ENV: 'production',
-    LOG_LEVEL: 'info',
-    USE_MOCK_DATA: 'false',
-    MOCK_DATA_ENABLED: 'false',
-    PROXMOX_AUTO_DETECT_CLUSTER: 'false',
-    PROXMOX_CLUSTER_MODE: 'false',
-    MOCK_CLUSTER_ENABLED: 'false',
     DOCKERFILE: 'docker/Dockerfile'
   },
   dev: {
@@ -53,18 +41,6 @@ const envConfigs = {
     USE_MOCK_DATA: 'true',
     MOCK_DATA_ENABLED: 'true',
     PROXMOX_AUTO_DETECT_CLUSTER: 'true',
-    PROXMOX_CLUSTER_MODE: 'true',
-    MOCK_CLUSTER_ENABLED: 'true',
-    DOCKERFILE: 'docker/Dockerfile.dev'
-  },
-  'dev:no-cluster': {
-    NODE_ENV: 'development',
-    LOG_LEVEL: 'info',
-    USE_MOCK_DATA: 'true',
-    MOCK_DATA_ENABLED: 'true',
-    PROXMOX_AUTO_DETECT_CLUSTER: 'false',
-    PROXMOX_CLUSTER_MODE: 'false',
-    MOCK_CLUSTER_ENABLED: 'false',
     DOCKERFILE: 'docker/Dockerfile.dev'
   }
 };
@@ -72,7 +48,7 @@ const envConfigs = {
 // Get the config for the specified environment
 const config = envConfigs[env];
 if (!config) {
-  console.error(`Error: Unknown environment "${env}". Use "prod", "prod:no-cluster", "dev", or "dev:no-cluster".`);
+  console.error(`Error: Unknown environment "${env}". Use "prod" or "dev".`);
   process.exit(1);
 }
 
@@ -97,4 +73,4 @@ Object.entries(config).forEach(([key, value]) => {
 // Write the updated content back to the .env file
 fs.writeFileSync(envFilePath, envContent);
 
-console.log(`\nEnvironment configured for ${env === 'prod' ? 'production' : env === 'prod:no-cluster' ? 'production (no cluster)' : env === 'dev' ? 'development' : 'development (no cluster)'}`); 
+console.log(`\nEnvironment configured for ${env === 'prod' ? 'production' : 'development'}`); 

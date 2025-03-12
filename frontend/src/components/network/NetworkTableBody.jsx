@@ -90,17 +90,25 @@ const NetworkTableBody = ({
                     )}
                   </>
                 ) : (
-                  'No systems match your current filters. Try adjusting your search criteria.'
+                  <>
+                    No stopped systems match your current filters. 
+                    {guestData && guestData.length > 0 && (
+                      <>
+                        <br />
+                        Try showing running systems or adjusting your filters.
+                      </>
+                    )}
+                  </>
                 )}
               </Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
-                {!showStopped && guestData && guestData.some(guest => !guest.running) && (
+                {guestData && (
                   <Button 
                     variant="outlined" 
-                    onClick={() => setShowStopped(true)}
+                    onClick={() => setShowStopped(!showStopped)}
                     size="small"
                   >
-                    Show Stopped Systems
+                    {showStopped ? "Show Running Systems" : "Show Stopped Systems"}
                   </Button>
                 )}
                 <Button 

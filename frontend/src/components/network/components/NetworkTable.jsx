@@ -31,7 +31,8 @@ const NetworkTable = ({
   resetFilters,
   showStopped,
   setShowStopped,
-  guestTypeFilter
+  guestTypeFilter,
+  setGuestTypeFilter
 }) => {
   return (
     <Card>
@@ -41,7 +42,13 @@ const NetworkTable = ({
             '& .MuiTableCell-stickyHeader': {
               borderBottom: '2px solid',
               borderBottomColor: 'divider',
-              zIndex: 3 // Ensure the header stays above other elements
+              zIndex: 3, // Ensure the header stays above other elements
+              // Ensure header cells are completely solid
+              backgroundColor: theme => theme.palette.background.paper,
+              // Prevent any transparency
+              backdropFilter: 'none',
+              // Add a subtle shadow for better visual separation
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }
           }}>
             <NetworkTableHeader
@@ -58,6 +65,10 @@ const NetworkTable = ({
               columnOrder={columnOrder}
               setColumnOrder={setColumnOrder}
               activeFilteredColumns={activeFilteredColumns}
+              showStopped={showStopped}
+              guestTypeFilter={guestTypeFilter}
+              setShowStopped={setShowStopped}
+              setGuestTypeFilter={setGuestTypeFilter}
             />
             <NetworkTableBody
               sortedAndFilteredData={sortedAndFilteredData}

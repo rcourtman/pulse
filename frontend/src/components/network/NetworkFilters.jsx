@@ -221,34 +221,6 @@ const NetworkFilters = ({
       
       <Divider />
       
-      {/* Show stopped systems toggle */}
-      <MenuItem dense onClick={() => setShowStopped(!showStopped)}>
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          width: '100%',
-          justifyContent: 'space-between'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {showStopped ? (
-              <VisibilityIcon fontSize="small" color="primary" sx={{ mr: 1 }} />
-            ) : (
-              <VisibilityOffIcon fontSize="small" color="action" sx={{ mr: 1 }} />
-            )}
-            <Typography variant="body2">
-              {showStopped ? 'Hide Stopped Systems' : 'Show Stopped Systems'}
-            </Typography>
-          </Box>
-          <Switch
-            checked={showStopped}
-            onChange={(e) => setShowStopped(e.target.checked)}
-            size="small"
-          />
-        </Box>
-      </MenuItem>
-      
-      <Divider />
-      
       {/* Sliders for numeric filters */}
       <Box sx={{ px: 2, py: 1, maxHeight: 300, overflow: 'auto' }}>
         <Typography variant="body2" gutterBottom>

@@ -13,6 +13,10 @@ const host = process.env.MOCK_SERVER_HOST || process.env.HOST || '0.0.0.0';
 (global as any).MOCK_SERVER_PORT = port;
 (global as any).HOST = host;
 
+// Set environment variable for cluster mode
+process.env.MOCK_CLUSTER_ENABLED = process.env.MOCK_CLUSTER_ENABLED || 'true';
+
+// Import the server module
 import './server';
 
 console.log(`Mock data server started on host ${host}, port ${port}`);

@@ -129,9 +129,16 @@ export const getSortedAndFilteredData = (
     );
   }
   
-  // Filter by running status if showStopped is false
-  if (!showStopped) {
-    filteredData = filteredData.filter(guest => guest.status.toLowerCase() === 'running');
+  // Filter by running status based on showStopped flag
+  // When showStopped is null, show all systems (no filtering)
+  // When showStopped is false, show only running systems
+  // When showStopped is true, show only stopped systems
+  if (showStopped !== null) {
+    if (showStopped) {
+      filteredData = filteredData.filter(guest => guest.status.toLowerCase() !== 'running');
+    } else {
+      filteredData = filteredData.filter(guest => guest.status.toLowerCase() === 'running');
+    }
   }
   
   // Apply search terms
@@ -327,7 +334,7 @@ export const calculateDynamicColumnWidths = (columnVisibility) => {
     disk: 13,    // Reduced from 15%
     download: 9, // Reduced from 10%
     upload: 9,   // Reduced from 10%
-    uptime: 7    // Reduced from 8%
+    uptime: 8    // Increased from 7% to accommodate longer uptime strings
   };
   
   // Get total width of visible columns

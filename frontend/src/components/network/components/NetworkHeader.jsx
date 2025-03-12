@@ -7,38 +7,22 @@ import {
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import SearchIcon from '@mui/icons-material/Search';
-import ComputerIcon from '@mui/icons-material/Computer';
-import DnsIcon from '@mui/icons-material/Dns';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import TuneIcon from '@mui/icons-material/Tune';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { DEFAULT_COLUMN_CONFIG } from '../../../constants/networkConstants';
 
 const NetworkHeader = ({
   openColumnMenu,
   openSearch,
-  openType,
-  openVisibility,
   openFilters,
   activeSearchTerms,
-  guestTypeFilter,
-  showStopped,
   filters,
   columnVisibility,
   handleColumnMenuOpen,
   handleSearchButtonClick,
-  handleTypeButtonClick,
-  handleVisibilityButtonClick,
   handleFilterButtonClick,
   searchButtonRef,
-  filterButtonRef,
-  systemFilterButtonRef
+  filterButtonRef
 }) => {
-  // Calculate if any system filters are active
-  const hasActiveSystemFilters = guestTypeFilter !== 'all' || showStopped;
-  
   return (
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
       <Box sx={{ display: 'flex', gap: 1 }}>
@@ -88,31 +72,6 @@ const NetworkHeader = ({
             invisible={activeSearchTerms.length === 0}
           >
             <SearchIcon />
-          </Badge>
-        </IconButton>
-        
-        {/* Combined System Filters button */}
-        <IconButton
-          ref={systemFilterButtonRef}
-          onClick={handleTypeButtonClick}
-          color={(openType || openVisibility) ? 'primary' : 'default'}
-          size="small"
-          aria-controls={(openType || openVisibility) ? 'system-filters-menu' : undefined}
-          aria-haspopup="true"
-          aria-expanded={(openType || openVisibility) ? 'true' : undefined}
-          sx={{ 
-            border: '1px solid',
-            borderColor: (openType || openVisibility) ? 'primary.main' : 'divider',
-            borderRadius: 1,
-            p: 0.5
-          }}
-        >
-          <Badge
-            badgeContent={hasActiveSystemFilters ? 1 : 0}
-            color="primary"
-            invisible={!hasActiveSystemFilters}
-          >
-            <FilterAltIcon />
           </Badge>
         </IconButton>
         

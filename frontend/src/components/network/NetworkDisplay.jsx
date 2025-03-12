@@ -3,7 +3,7 @@ import useSocket from '../../hooks/useSocket';
 import useFormattedMetrics from '../../hooks/useFormattedMetrics';
 import useMockMetrics from '../../hooks/useMockMetrics';
 import { useThemeContext } from '../../context/ThemeContext';
-import { Box, CircularProgress, useTheme } from '@mui/material';
+import { Box, CircularProgress, useTheme, Typography, Button } from '@mui/material';
 
 // Import hooks
 import {
@@ -70,6 +70,79 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   // Use mock metrics for testing - but only if we're not using real mock data from the server
   const mockMetrics = useMockMetrics(guestData);
   
+  // Use notification hook - MOVED UP before it's used in the migration event listener
+  const {
+    snackbarOpen,
+    snackbarMessage,
+    snackbarSeverity,
+    handleSnackbarClose,
+    showNotification
+  } = useNotifications();
+  
+  // Listen for migration events and show notifications
+  React.useEffect(() => {
+    const handleMigrationEvent = (event) => {
+      try {
+        console.log('Migration event received in NetworkDisplay:', event.detail);
+        
+        const { guestId, guestName, fromNode, toNode } = event.detail;
+        
+        // Get node names for better display
+        const fromNodeName = nodeData?.find(n => n.id === fromNode)?.name || fromNode;
+        const toNodeName = nodeData?.find(n => n.id === toNode)?.name || toNode;
+        
+        // Show a notification about the migration
+        showNotification(
+          `Migration: ${guestName || 'Guest'} migrated from ${fromNodeName} to ${toNodeName}`,
+          'info'
+        );
+        
+        // Show browser notification if supported and permission granted
+        if ('Notification' in window) {
+          // Check if permission is already granted
+          if (Notification.permission === 'granted') {
+            showBrowserNotification(guestName || 'Guest', fromNodeName, toNodeName);
+          } 
+          // Ask for permission if not denied
+          else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                showBrowserNotification(guestName || 'Guest', fromNodeName, toNodeName);
+              }
+            });
+          }
+        }
+        
+        console.log(`Migration event: ${guestName} (${guestId}) migrated from ${fromNodeName} to ${toNodeName}`);
+      } catch (error) {
+        console.error('Error handling migration event:', error);
+      }
+    };
+    
+    // Function to show browser notification
+    const showBrowserNotification = (guestName, fromNode, toNode) => {
+      try {
+        const notification = new Notification('Proxmox Migration', {
+          body: `${guestName} migrated from ${fromNode} to ${toNode}`,
+          icon: '/favicon.ico'
+        });
+        
+        // Auto close after 5 seconds
+        setTimeout(() => notification.close(), 5000);
+      } catch (error) {
+        console.error('Error showing browser notification:', error);
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('proxmox:migration', handleMigrationEvent);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('proxmox:migration', handleMigrationEvent);
+    };
+  }, [nodeData, showNotification]);
+  
   // Combine real and mock metrics, preferring real metrics if available
   const combinedMetrics = useMemo(() => {
     // When using the mock data server, always use the real metrics
@@ -97,15 +170,6 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   
   const theme = useTheme();
   const { darkMode } = useThemeContext();
-  
-  // Use notification hook
-  const {
-    snackbarOpen,
-    snackbarMessage,
-    snackbarSeverity,
-    handleSnackbarClose,
-    showNotification
-  } = useNotifications();
   
   // Use column management hook
   const {
@@ -156,21 +220,12 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     searchAnchorEl,
     openSearch,
     searchInputRef,
-    typeAnchorEl,
-    openType,
-    visibilityAnchorEl,
-    openVisibility,
     filterButtonRef,
     searchButtonRef,
-    systemFilterButtonRef,
     handleFilterButtonClick,
     handleCloseFilterPopover,
     handleSearchButtonClick,
     handleCloseSearchPopover,
-    handleTypeButtonClick,
-    handleCloseTypePopover,
-    handleVisibilityButtonClick,
-    handleCloseVisibilityPopover,
     closeAllPopovers
   } = usePopoverManagement();
   
@@ -178,8 +233,6 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   useKeyboardShortcuts({
     openFilters,
     openSearch,
-    openType,
-    openVisibility,
     openColumnMenu,
     resetFilters,
     closeAllPopovers,
@@ -221,21 +274,60 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   
   // Show loading state if not connected
   if (!isConnected && connectionStatus !== 'error' && connectionStatus !== 'disconnected') {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-        <CircularProgress />
-      </Box>
-    );
+    // Check if we're using mock data
+    const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
+                        localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
+    
+    // If we're using mock data, we can still show the UI even if not connected
+    if (!useMockData) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
   }
   
   // Show error state if there's a connection error
   if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
+    // Check if we're using mock data
+    const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
+                        localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
+    
+    // If we're using mock data, we can still show the UI even if there's a connection error
+    if (!useMockData) {
+      return (
+        <ConnectionErrorDisplay 
+          connectionStatus={connectionStatus} 
+          error={error} 
+          onReconnect={reconnect}
+        />
+      );
+    }
+  }
+  
+  // If we have no data but we're connected, show a message
+  if (isConnected && (!guestData || guestData.length === 0)) {
     return (
-      <ConnectionErrorDisplay 
-        connectionStatus={connectionStatus} 
-        error={error} 
-        onReconnect={reconnect}
-      />
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Typography variant="h5" gutterBottom>No guest data available</Typography>
+        <Typography variant="body1" color="text.secondary">
+          The application is connected but no guest data was received.
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          sx={{ mt: 2 }}
+          onClick={() => {
+            if (isConnected) {
+              // Request fresh data
+              reconnect();
+            }
+          }}
+        >
+          Refresh Data
+        </Button>
+      </Box>
     );
   }
   
@@ -245,22 +337,15 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
       <NetworkHeader
         openColumnMenu={openColumnMenu}
         openSearch={openSearch}
-        openType={openType}
-        openVisibility={openVisibility}
         openFilters={openFilters}
         activeSearchTerms={activeSearchTerms}
-        guestTypeFilter={guestTypeFilter}
-        showStopped={showStopped}
         filters={filters}
         columnVisibility={columnVisibility}
         handleColumnMenuOpen={handleColumnMenuOpen}
         handleSearchButtonClick={handleSearchButtonClick}
-        handleTypeButtonClick={handleTypeButtonClick}
-        handleVisibilityButtonClick={handleVisibilityButtonClick}
         handleFilterButtonClick={handleFilterButtonClick}
         searchButtonRef={searchButtonRef}
         filterButtonRef={filterButtonRef}
-        systemFilterButtonRef={systemFilterButtonRef}
       />
       
       {/* Popovers */}
@@ -276,20 +361,6 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
         removeSearchTerm={removeSearchTerm}
         searchInputRef={searchInputRef}
         clearSearchTerms={clearSearchTerms}
-        
-        // Type popover props
-        typeAnchorEl={typeAnchorEl}
-        openType={openType}
-        handleCloseTypePopover={handleCloseTypePopover}
-        guestTypeFilter={guestTypeFilter}
-        setGuestTypeFilter={setGuestTypeFilter}
-        
-        // Visibility popover props
-        visibilityAnchorEl={visibilityAnchorEl}
-        openVisibility={openVisibility}
-        handleCloseVisibilityPopover={handleCloseVisibilityPopover}
-        showStopped={showStopped}
-        setShowStopped={setShowStopped}
         
         // Filter popover props
         filterAnchorEl={filterAnchorEl}
@@ -330,6 +401,7 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
         showStopped={showStopped}
         setShowStopped={setShowStopped}
         guestTypeFilter={guestTypeFilter}
+        setGuestTypeFilter={setGuestTypeFilter}
       />
       
       {/* Notification Snackbar */}

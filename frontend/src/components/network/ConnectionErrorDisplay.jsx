@@ -87,7 +87,20 @@ const ConnectionErrorDisplay = ({ connectionStatus, error, onReconnect }) => {
             <li>The server application is running</li>
             <li>Your network connection is working</li>
             <li>Any firewalls or security software are not blocking the connection</li>
+            <li>The Socket.io server is properly configured and running on port 7654</li>
           </ul>
+          
+          {error && error.includes('Socket.io') && (
+            <Box sx={{ mt: 1, p: 1, bgcolor: alpha(theme.palette.error.main, 0.1), borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', color: theme.palette.error.main }}>
+                Socket.io Connection Issue Detected
+              </Typography>
+              <Typography variant="body2">
+                The application is having trouble connecting to the Socket.io server. This is required for real-time updates.
+                Try restarting the server with <code>npm run dev</code>.
+              </Typography>
+            </Box>
+          )}
         </Typography>
         {onReconnect && (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>

@@ -18,7 +18,8 @@ import {
   ListItemText,
   Divider,
   useTheme,
-  Button
+  Button,
+  Link
 } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -26,6 +27,7 @@ import ComputerIcon from '@mui/icons-material/Computer';
 import DnsIcon from '@mui/icons-material/Dns';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import CheckIcon from '@mui/icons-material/Check';
+import GitHubIcon from '@mui/icons-material/GitHub';
 import NetworkDisplay from './components/NetworkDisplay';
 import { AppThemeProvider, useThemeContext } from './context/ThemeContext';
 import useSocket from './hooks/useSocket';
@@ -36,6 +38,24 @@ import { initializeStorage } from './utils/storageUtils';
 function AppContent() {
   const { darkMode, toggleDarkMode } = useThemeContext();
   const [selectedNode, setSelectedNode] = useState('all');
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Error boundary effect
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('Global error caught:', event.error);
+      setHasError(true);
+      setErrorMessage(event.error?.message || 'An unknown error occurred');
+    };
+    
+    window.addEventListener('error', handleError);
+    
+    return () => {
+      window.removeEventListener('error', handleError);
+    };
+  }, []);
+  
   const { 
     nodeData, 
     guestData, 
@@ -53,6 +73,38 @@ function AppContent() {
       console.log('Application data was cleared due to environment change');
     }
   }, []);
+  
+  // If there's an error, show an error message
+  if (hasError) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        p: 3,
+        textAlign: 'center'
+      }}>
+        <Typography variant="h4" color="error" gutterBottom>
+          Something went wrong
+        </Typography>
+        <Typography variant="body1" paragraph>
+          {errorMessage}
+        </Typography>
+        <Typography variant="body2" paragraph>
+          Try refreshing the page or check the console for more details.
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={() => window.location.reload()}
+        >
+          Refresh Page
+        </Button>
+      </Box>
+    );
+  }
   
   // Transform the node data from the API into the format needed for the dropdown
   const availableNodes = React.useMemo(() => {
@@ -146,6 +198,45 @@ function AppContent() {
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
             <AnimatedLogoWithText darkMode={darkMode} />
+            
+            {/* Version display with link to repository */}
+            <Tooltip title="View on GitHub">
+              <Link 
+                href="https://github.com/rcourtman/pulse" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  ml: 2,
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  textDecoration: 'none',
+                  '&:hover': {
+                    color: 'rgba(255, 255, 255, 1)',
+                  }
+                }}
+              >
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    mr: 0.5,
+                    display: { xs: 'none', sm: 'block' }
+                  }}
+                >
+                  v{VERSION}
+                </Typography>
+                <GitHubIcon 
+                  fontSize="small" 
+                  sx={{ 
+                    fontSize: '1rem',
+                    opacity: 0.8,
+                    '&:hover': {
+                      opacity: 1
+                    }
+                  }} 
+                />
+              </Link>
+            </Tooltip>
           </Box>
           
           {/* Node Selection Dropdown */}

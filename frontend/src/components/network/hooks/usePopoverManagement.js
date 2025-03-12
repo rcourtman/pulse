@@ -10,22 +10,11 @@ const usePopoverManagement = () => {
   const openSearch = Boolean(searchAnchorEl);
   const searchInputRef = useRef(null);
   
-  // State for type popover
-  const [typeAnchorEl, setTypeAnchorEl] = useState(null);
-  const openType = Boolean(typeAnchorEl);
-  
-  // State for visibility popover
-  const [visibilityAnchorEl, setVisibilityAnchorEl] = useState(null);
-  const openVisibility = Boolean(visibilityAnchorEl);
-  
   // Add a ref for the filter button
   const filterButtonRef = useRef(null);
   
   // Add a ref for the search button
   const searchButtonRef = useRef(null);
-  
-  // Add a ref for the system filter button
-  const systemFilterButtonRef = useRef(null);
   
   // Filter popover handlers
   const handleFilterButtonClick = useCallback((event) => {
@@ -50,31 +39,11 @@ const usePopoverManagement = () => {
   const handleCloseSearchPopover = useCallback(() => {
     setSearchAnchorEl(null);
   }, []);
-  
-  // System type popover handlers
-  const handleTypeButtonClick = useCallback((event) => {
-    setTypeAnchorEl(event.currentTarget);
-  }, []);
-  
-  const handleCloseTypePopover = useCallback(() => {
-    setTypeAnchorEl(null);
-  }, []);
-  
-  // Visibility popover handlers
-  const handleVisibilityButtonClick = useCallback((event) => {
-    setVisibilityAnchorEl(event.currentTarget);
-  }, []);
-  
-  const handleCloseVisibilityPopover = useCallback(() => {
-    setVisibilityAnchorEl(null);
-  }, []);
 
   // Function to close all popovers
   const closeAllPopovers = useCallback(() => {
     setFilterAnchorEl(null);
     setSearchAnchorEl(null);
-    setTypeAnchorEl(null);
-    setVisibilityAnchorEl(null);
   }, []);
 
   return {
@@ -83,21 +52,12 @@ const usePopoverManagement = () => {
     searchAnchorEl,
     openSearch,
     searchInputRef,
-    typeAnchorEl,
-    openType,
-    visibilityAnchorEl,
-    openVisibility,
     filterButtonRef,
     searchButtonRef,
-    systemFilterButtonRef,
     handleFilterButtonClick,
     handleCloseFilterPopover,
     handleSearchButtonClick,
     handleCloseSearchPopover,
-    handleTypeButtonClick,
-    handleCloseTypePopover,
-    handleVisibilityButtonClick,
-    handleCloseVisibilityPopover,
     closeAllPopovers
   };
 };

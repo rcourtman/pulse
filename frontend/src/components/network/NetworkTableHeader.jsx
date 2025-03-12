@@ -13,12 +13,17 @@ import {
   Divider,
   Typography,
   Button,
-  useTheme
+  useTheme,
+  alpha
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckIcon from '@mui/icons-material/Check';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import CircleIcon from '@mui/icons-material/Circle';
+import CircleOutlinedIcon from '@mui/icons-material/CircleOutlined';
+import AdjustIcon from '@mui/icons-material/Adjust';
+import TripOriginIcon from '@mui/icons-material/TripOrigin';
 import { DEFAULT_COLUMN_CONFIG } from '../../constants/networkConstants';
 import { calculateDynamicColumnWidths } from '../../utils/networkUtils';
 
@@ -35,7 +40,12 @@ const NetworkTableHeader = ({
   forceUpdateCounter,
   columnOrder,
   setColumnOrder,
-  activeFilteredColumns = {}
+  activeFilteredColumns = {},
+  showStopped = null,
+  guestTypeFilter = 'all',
+  setShowStopped,
+  showRunningOnly = true,
+  setGuestTypeFilter
 }) => {
   const theme = useTheme();
 
@@ -43,6 +53,52 @@ const NetworkTableHeader = ({
   const getSortDirection = (key) => {
     if (!sortConfig) return 'asc';
     return sortConfig.key === key ? sortConfig.direction : 'asc';
+  };
+
+  // Determine if sorting should be enabled for type columns
+  const isSortingEnabledForType = guestTypeFilter === 'all'; // Only enable sorting if all guest types are shown
+
+  // Handle click on column header
+  const handleColumnClick = (columnId) => {
+    // For status column, cycle through status filters: all -> running -> stopped -> all
+    if (columnId === 'status' && setShowStopped) {
+      if (showStopped === null) {
+        // Currently showing all, switch to showing running only
+        setShowStopped(false);
+      } else if (showStopped === false) {
+        // Currently showing running only, switch to showing stopped only
+        setShowStopped(true);
+      } else {
+        // Currently showing stopped only, switch to showing all
+        setShowStopped(null);
+      }
+      return;
+    }
+    
+    // For type column, cycle through guest type filters: all -> vm -> ct -> all
+    if (columnId === 'type' && setGuestTypeFilter) {
+      if (guestTypeFilter === 'all') {
+        setGuestTypeFilter('vm');
+      } else if (guestTypeFilter === 'vm') {
+        setGuestTypeFilter('ct');
+      } else {
+        setGuestTypeFilter('all');
+      }
+      return;
+    }
+    
+    // Disable sorting for type column when only VMs or only containers are shown
+    if (columnId === 'type' && !isSortingEnabledForType) {
+      return;
+    }
+    
+    // Disable sorting for status column completely
+    if (columnId === 'status') {
+      return;
+    }
+    
+    // Otherwise, proceed with normal sorting
+    requestSort(columnId);
   };
 
   // Count visible columns
@@ -233,34 +289,202 @@ const NetworkTableHeader = ({
             {visibleColumns.map(column => (
               <TableCell 
                 key={column.id}
+                onClick={() => handleColumnClick(column.id)}
                 sx={{ 
                   width: columnWidths[column.id] || 'auto',
                   minWidth: getMinWidthForColumn(column.id),
-                  backgroundColor: activeFilteredColumns[column.id] 
-                    ? theme.palette.mode === 'dark' 
-                      ? 'rgba(64, 150, 255, 0.1)' 
-                      : 'rgba(25, 118, 210, 0.08)'
-                    : 'background.paper',
-                  ...(column.id === 'status' && {
+                  // Reset all background highlighting, use default background for all cells
+                  backgroundColor: theme.palette.background.paper,
+                  // Remove special borders and box shadows
+                  borderBottom: '1px solid',
+                  borderBottomColor: 'divider',
+                  borderTop: 'none',
+                  boxShadow: 'none',
+                  ...((column.id === 'status' || column.id === 'type') && {
                     textAlign: 'center',
                     padding: '0px 8px'
-                  })
+                  }),
+                  // Always make status column clickable with pointer cursor
+                  cursor: column.id === 'status' || column.id === 'type'
+                    ? 'pointer' // Always use pointer for status and type columns
+                    : 'pointer',
+                  // Only highlight on hover
+                  '&:hover': {
+                    backgroundColor: theme.palette.mode === 'dark'
+                      ? alpha(theme.palette.primary.light, 0.15) // Hover effect in dark mode
+                      : alpha(theme.palette.primary.light, 0.1) // Hover effect in light mode
+                  }
                 }}
               >
-                {column.id === 'status' ? (
-                  // For status column, just show an empty header with no sort functionality
-                  <Box sx={{ height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {column.label}
+                {column.id === 'status' || column.id === 'type' ? (
+                  // For status and type columns, use a simple centered display without sort arrow
+                  <Box 
+                    sx={{ 
+                      width: '100%', 
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'text.secondary',
+                    }}
+                  >
+                    {column.id === 'status' ? (
+                      // Show different circle icons based on which status filter is active
+                      <Tooltip title={showStopped === null ? "Show running only" : showStopped === false ? "Show stopped only" : "Show all systems"}>
+                        <Box sx={{ 
+                          position: 'relative', 
+                          width: 16, 
+                          height: 16,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            transition: 'transform 0.2s ease'
+                          }
+                        }}>
+                          {showStopped === null ? (
+                            // When showing all systems, show a neutral grey circle
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#9e9e9e', // neutral grey
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha('#9e9e9e', 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          ) : showStopped === false ? (
+                            // When showing running systems only, show solid green circle
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#4caf50', // success green (same as running status)
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha('#4caf50', 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          ) : (
+                            // When showing stopped systems only, show solid red circle
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#f44336', // error red (same as stopped status)
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha('#f44336', 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    ) : (
+                      // For type column, show a colored indicator based on the current filter state
+                      <Tooltip title={guestTypeFilter === 'all' ? "Show VMs only" : guestTypeFilter === 'vm' ? "Show containers only" : "Show all types"}>
+                        <Box sx={{ 
+                          position: 'relative', 
+                          width: 16, 
+                          height: 16,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            transition: 'transform 0.2s ease'
+                          }
+                        }}>
+                          {guestTypeFilter === 'all' ? (
+                            // When showing all types, show a neutral grey circle
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#9e9e9e', // neutral grey
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha('#9e9e9e', 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          ) : guestTypeFilter === 'vm' ? (
+                            // When showing VMs only, show a primary blue circle (same as VM icon)
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: '#1976d2', // primary blue (same as VM icon)
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha('#1976d2', 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          ) : (
+                            // When showing containers only, show a secondary color circle (same as CT icon)
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                bgcolor: theme.palette.secondary.main, // secondary color (same as CT icon)
+                                boxShadow: theme.palette.mode === 'dark' 
+                                  ? `0 0 0 1px ${alpha(theme.palette.secondary.main, 0.5)}` 
+                                  : '0 0 0 1px rgba(255, 255, 255, 0.8)',
+                              }}
+                            />
+                          )}
+                        </Box>
+                      </Tooltip>
+                    )}
                   </Box>
                 ) : (
                   // For all other columns, show the sort label
-                  <TableSortLabel
-                    active={sortConfig?.key === column.id}
-                    direction={getSortDirection(column.id)}
-                    onClick={() => requestSort(column.id)}
-                  >
-                    {column.label || column.id}
-                  </TableSortLabel>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    width: '100%'
+                  }}>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        // Make text semi-bold when column is sorted
+                        fontWeight: sortConfig?.key === column.id ? 600 : 400,
+                        // Use primary color in light mode, white in dark mode for sorted columns
+                        color: sortConfig?.key === column.id 
+                          ? theme.palette.mode === 'dark'
+                            ? '#ffffff' // White for dark mode
+                            : theme.palette.primary.main // Primary color for light mode
+                          : 'inherit',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      {column.label || column.id}
+                      {sortConfig?.key === column.id && (
+                        <Box component="span" sx={{ 
+                          ml: 0.5, 
+                          display: 'flex', 
+                          alignItems: 'center',
+                          fontSize: '0.7rem',
+                          // Use primary color in light mode, white in dark mode for sort indicator
+                          color: theme.palette.mode === 'dark' 
+                            ? '#ffffff' 
+                            : theme.palette.primary.main
+                        }}>
+                          {sortConfig.direction === 'asc' ? '▲' : '▼'}
+                        </Box>
+                      )}
+                    </Typography>
+                  </Box>
                 )}
               </TableCell>
             ))}
@@ -441,16 +665,16 @@ const NetworkTableHeader = ({
 const getMinWidthForColumn = (columnId) => {
   const minWidths = {
     node: 70,     // Reduced from 80px
-    type: 45,     // Reduced from 50px
+    type: 40,     // Reduced from 65px since we're only showing an icon now
     id: 60,       // Reduced from 70px
-    status: 40,   // Reduced from 90px since we're only showing the icon now
+    status: 40,   // Reduced from 65px since we're only showing an icon now
     name: 130,    // Reduced from 150px
     cpu: 100,     // Reduced from 120px
     memory: 100,  // Reduced from 120px
     disk: 100,    // Reduced from 120px
     download: 90, // Reduced from 100px
     upload: 90,   // Reduced from 100px
-    uptime: 70    // Reduced from 80px
+    uptime: 85    // Increased from 70px to accommodate longer uptime strings
   };
   
   return minWidths[columnId] || 90; // Default reduced from 100px

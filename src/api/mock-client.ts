@@ -19,7 +19,6 @@ export class MockClient extends EventEmitter {
   private pollingInterval: NodeJS.Timeout | null = null;
   private mockVMs: ProxmoxVM[] = [];
   private mockContainers: ProxmoxContainer[] = [];
-  private mockClusterEnabled: boolean = process.env.MOCK_CLUSTER_ENABLED !== 'false';
   private mockClusterName: string = process.env.MOCK_CLUSTER_NAME || 'mock-cluster';
 
   constructor(config: NodeConfig) {
@@ -39,7 +38,10 @@ export class MockClient extends EventEmitter {
     // Simulate a delay to mimic network request
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    if (this.mockClusterEnabled) {
+    // Auto-detect cluster based on environment variable
+    const autoDetectCluster = process.env.PROXMOX_AUTO_DETECT_CLUSTER !== 'false';
+    
+    if (autoDetectCluster) {
       this.logger.info(`Mock node is part of cluster: ${this.mockClusterName}`);
       return { isCluster: true, clusterName: this.mockClusterName };
     } else {
@@ -72,34 +74,57 @@ export class MockClient extends EventEmitter {
       customNode.guests.forEach(guest => {
         this.logger.info(`Processing guest: ${guest.id} (${guest.name}, type: ${guest.type})`);
         
+        // Check if this is a shared guest (ID 999 or 888)
+        const isSharedGuest = guest.id === '999' || guest.id === '888';
+        
+        // For shared guests, we need to determine if this node should be the primary
+        // We'll use a simple rule: the node with the lowest ID is the primary
+        let shouldBeRunning = guest.status === 'running';
+        
+        if (isSharedGuest && shouldBeRunning) {
+          // Find all nodes that have this guest
+          const nodesWithGuest = customMockData.nodes
+            .filter(n => n.guests.some(g => g.id === guest.id))
+            .map(n => n.id);
+          
+          // Sort node IDs alphabetically
+          const sortedNodeIds = [...nodesWithGuest].sort();
+          
+          // The primary node is the first one alphabetically
+          const primaryNodeId = sortedNodeIds[0];
+          
+          // Only mark as running if this is the primary node
+          shouldBeRunning = nodeId === primaryNodeId;
+          
+          this.logger.info(`Shared guest ${guest.id} (${guest.name}) on node ${nodeId}: primaryNode=${primaryNodeId}, shouldBeRunning=${shouldBeRunning}`);
+        }
+        
         if (guest.type === 'vm') {
           // Extract the VMID from the guest ID
           const vmid = parseInt(guest.id.split('-').pop() || '100');
           
-          // Generate the ID based on cluster mode
-          const id = this.mockClusterEnabled 
-            ? `${this.mockClusterName}-vm-${vmid}`
-            : `${nodeId}-vm-${vmid}`; // Use nodeId-vm-vmid format when cluster mode is disabled
+          // Always use node-specific IDs
+          const id = `${nodeId}-vm-${vmid}`;
           
           // Create a VM from the custom data
           const vm: ProxmoxVM = {
             id: id,
             name: guest.name,
             node: nodeId,
-            status: guest.status as 'running' | 'stopped' | 'paused',
+            status: shouldBeRunning ? 'running' : 'stopped',
             vmid: vmid,
             type: 'qemu',
             cpus: 2 + Math.floor(Math.random() * 6),
             maxmem: guest.memory,
-            memory: guest.status === 'running' ? Math.floor(guest.memory * 0.7) : 0,
+            memory: shouldBeRunning ? Math.floor(guest.memory * 0.7) : 0,
             maxdisk: 50 * 1024 * 1024 * 1024,
             disk: 20 * 1024 * 1024 * 1024,
-            uptime: guest.status === 'running' ? 3600 * (1 + Math.floor(Math.random() * 72)) : 0,
-            cpu: guest.status === 'running' ? guest.cpu : 0,
-            netout: guest.status === 'running' ? Math.random() * 1024 * 1024 * 10 : 0,
-            netin: guest.status === 'running' ? Math.random() * 1024 * 1024 * 5 : 0,
-            diskwrite: guest.status === 'running' ? Math.random() * 1024 * 1024 : 0,
-            diskread: guest.status === 'running' ? Math.random() * 1024 * 1024 * 2 : 0,
+            uptime: shouldBeRunning ? 3600 * (1 + Math.floor(Math.random() * 72)) : 0,
+            cpu: shouldBeRunning ? guest.cpu : 0,
+            netout: shouldBeRunning ? Math.random() * 1024 * 1024 * 10 : 0,
+            netin: shouldBeRunning ? Math.random() * 1024 * 1024 * 5 : 0,
+            diskwrite: shouldBeRunning ? Math.random() * 1024 * 1024 : 0,
+            diskread: shouldBeRunning ? Math.random() * 1024 * 1024 * 2 : 0,
             template: false
           };
           
@@ -108,30 +133,28 @@ export class MockClient extends EventEmitter {
           // Extract the VMID from the guest ID
           const vmid = parseInt(guest.id.split('-').pop() || '200');
           
-          // Generate the ID based on cluster mode
-          const id = this.mockClusterEnabled 
-            ? `${this.mockClusterName}-ct-${vmid}`
-            : `${nodeId}-ct-${vmid}`; // Use nodeId-ct-vmid format when cluster mode is disabled
+          // Always use node-specific IDs
+          const id = `${nodeId}-ct-${vmid}`;
           
           // Create a container from the custom data
           const container: ProxmoxContainer = {
             id: id,
             name: guest.name,
             node: nodeId,
-            status: guest.status as 'running' | 'stopped' | 'paused' | 'unknown',
+            status: shouldBeRunning ? 'running' : 'stopped',
             vmid: vmid,
             type: 'lxc',
             cpus: 1 + Math.floor(Math.random() * 4),
             maxmem: guest.memory,
-            memory: guest.status === 'running' ? Math.floor(guest.memory * 0.6) : 0,
+            memory: shouldBeRunning ? Math.floor(guest.memory * 0.6) : 0,
             maxdisk: 20 * 1024 * 1024 * 1024,
             disk: 8 * 1024 * 1024 * 1024,
-            uptime: guest.status === 'running' ? 3600 * (1 + Math.floor(Math.random() * 48)) : 0,
-            cpu: guest.status === 'running' ? guest.cpu : 0,
-            netout: guest.status === 'running' ? Math.random() * 1024 * 1024 * 5 : 0,
-            netin: guest.status === 'running' ? Math.random() * 1024 * 1024 * 3 : 0,
-            diskwrite: guest.status === 'running' ? Math.random() * 1024 * 512 : 0,
-            diskread: guest.status === 'running' ? Math.random() * 1024 * 1024 : 0,
+            uptime: shouldBeRunning ? 3600 * (1 + Math.floor(Math.random() * 48)) : 0,
+            cpu: shouldBeRunning ? guest.cpu : 0,
+            netout: shouldBeRunning ? Math.random() * 1024 * 1024 * 5 : 0,
+            netin: shouldBeRunning ? Math.random() * 1024 * 1024 * 3 : 0,
+            diskwrite: shouldBeRunning ? Math.random() * 1024 * 512 : 0,
+            diskread: shouldBeRunning ? Math.random() * 1024 * 1024 : 0,
             template: false
           };
           
@@ -148,11 +171,9 @@ export class MockClient extends EventEmitter {
       this.logger.info(`Generating ${vmCount} mock VMs for node ${nodeName}`);
       
       for (let i = 0; i < vmCount; i++) {
-        // Generate the VM ID based on cluster mode
+        // Generate the VM ID - always use node-specific IDs
         const vmid = 100 + i;
-        const vmId = this.mockClusterEnabled
-          ? `${this.mockClusterName}-vm-${vmid}`
-          : `${nodeId}-vm-${i + 1}`;
+        const vmId = `${nodeId}-vm-${vmid}`;
         
         const status = getRandomVMStatus();
         // Use a better name from the list, wrapping around if needed
@@ -189,11 +210,9 @@ export class MockClient extends EventEmitter {
       this.logger.info(`Generating ${containerCount} mock containers for node ${nodeName}`);
       
       for (let i = 0; i < containerCount; i++) {
-        // Generate the container ID based on cluster mode
+        // Generate the container ID - always use node-specific IDs
         const vmid = 200 + i;
-        const containerId = this.mockClusterEnabled
-          ? `${this.mockClusterName}-ct-${vmid}`
-          : `${nodeId}-ct-${i + 1}`;
+        const containerId = `${nodeId}-ct-${vmid}`;
         
         const status = getRandomContainerStatus();
         // Use a better name from the list, wrapping around if needed
@@ -214,7 +233,7 @@ export class MockClient extends EventEmitter {
           maxdisk: 20 * 1024 * 1024 * 1024,
           disk: 8 * 1024 * 1024 * 1024,
           uptime: status === 'running' ? 3600 * (1 + Math.floor(Math.random() * 48)) : 0,
-          cpu: status === 'running' ? Math.random() * 0.5 : 0,
+          cpu: status === 'running' ? Math.random() * 0.6 : 0,
           netout: status === 'running' ? Math.random() * 1024 * 1024 * 5 : 0,
           netin: status === 'running' ? Math.random() * 1024 * 1024 * 3 : 0,
           diskwrite: status === 'running' ? Math.random() * 1024 * 512 : 0,
@@ -224,6 +243,8 @@ export class MockClient extends EventEmitter {
         
         this.mockContainers.push(container);
       }
+      
+      this.logger.info(`Generated ${this.mockVMs.length} VMs and ${this.mockContainers.length} containers for node ${nodeName}`);
     }
   }
 
@@ -298,6 +319,33 @@ export class MockClient extends EventEmitter {
         socket.on('event', (event) => {
           this.logger.debug('Received event from mock server', { event });
           this.emit('event', event);
+        });
+        
+        // Handle guests data from the mock server
+        socket.on('guests', (data) => {
+          this.logger.info(`Received ${data.guests.length} guests from mock server`);
+          
+          // Update our local VMs and containers based on the data from the server
+          // This ensures we respect the primary node assignment from the server
+          data.guests.forEach((guest: any) => {
+            if (guest.type === 'vm') {
+              // Find the VM in our local list
+              const vmIndex = this.mockVMs.findIndex(vm => vm.id === guest.id || vm.name === guest.name);
+              if (vmIndex >= 0) {
+                // Update the VM status to match what the server says
+                this.mockVMs[vmIndex].status = guest.status;
+                this.logger.debug(`Updated VM ${guest.name} status to ${guest.status}`);
+              }
+            } else if (guest.type === 'ct') {
+              // Find the container in our local list
+              const ctIndex = this.mockContainers.findIndex(ct => ct.id === guest.id || ct.name === guest.name);
+              if (ctIndex >= 0) {
+                // Update the container status to match what the server says
+                this.mockContainers[ctIndex].status = guest.status;
+                this.logger.debug(`Updated container ${guest.name} status to ${guest.status}`);
+              }
+            }
+          });
         });
         
         // Handle connection timeout
@@ -402,16 +450,40 @@ export class MockClient extends EventEmitter {
     
     // Simulate some CPU and memory usage changes for running VMs
     this.mockVMs.forEach(vm => {
-      if (vm.status === 'running') {
+      // Only update metrics for VMs that are running on this node
+      if (vm.status === 'running' && vm.node === this.config.id) {
+        // Update metrics for running VMs
         if (vm.cpu !== undefined) {
-          vm.cpu = Math.min(1, Math.max(0.05, vm.cpu + (Math.random() * 0.2 - 0.1)));
+          // Generate more dynamic CPU values that fluctuate between 5% and 80%
+          const randomFactor = Math.random() * 0.3 - 0.15; // Random value between -0.15 and 0.15
+          vm.cpu = Math.min(0.8, Math.max(0.05, vm.cpu + randomFactor));
         }
-        vm.memory = Math.min(vm.maxmem, Math.max(vm.maxmem * 0.2, vm.memory + (Math.random() * vm.maxmem * 0.1 - vm.maxmem * 0.05)));
-        vm.netout += Math.random() * 1024 * 100;
-        vm.netin += Math.random() * 1024 * 50;
-        vm.diskwrite += Math.random() * 1024 * 10;
-        vm.diskread += Math.random() * 1024 * 20;
+        
+        // Update memory with more variation
+        const memoryVariation = Math.random() * 0.2 - 0.1; // Random value between -0.1 and 0.1
+        vm.memory = Math.min(vm.maxmem, Math.max(vm.maxmem * 0.2, vm.memory + (vm.maxmem * memoryVariation)));
+        
+        // Update network metrics with more realistic values
+        // Network traffic tends to come in bursts, so simulate that
+        const burstFactor = Math.random() > 0.7 ? 3 : 1; // 30% chance of a traffic burst
+        vm.netout += Math.random() * 1024 * 1024 * burstFactor; // Bytes per update
+        vm.netin += Math.random() * 1024 * 512 * burstFactor; // Bytes per update
+        
+        // Update disk metrics
+        vm.diskwrite += Math.random() * 1024 * 100; // Bytes per update
+        vm.diskread += Math.random() * 1024 * 200; // Bytes per update
+        
         vm.uptime += 10; // Add 10 seconds to uptime
+      } else if (vm.status !== 'running') {
+        // For non-running VMs, ensure metrics are zeroed out
+        if (vm.cpu !== undefined) {
+          vm.cpu = 0;
+        }
+        vm.memory = 0;
+        vm.netout = 0;
+        vm.netin = 0;
+        vm.diskwrite = 0;
+        vm.diskread = 0;
       }
     });
     
@@ -429,16 +501,40 @@ export class MockClient extends EventEmitter {
     
     // Simulate some CPU and memory usage changes for running containers
     this.mockContainers.forEach(container => {
-      if (container.status === 'running') {
+      // Only update metrics for containers that are running on this node
+      if (container.status === 'running' && container.node === this.config.id) {
+        // Update metrics for running containers
         if (container.cpu !== undefined) {
-          container.cpu = Math.min(1, Math.max(0.02, container.cpu + (Math.random() * 0.15 - 0.075)));
+          // Generate more dynamic CPU values that fluctuate between 2% and 60%
+          const randomFactor = Math.random() * 0.25 - 0.125; // Random value between -0.125 and 0.125
+          container.cpu = Math.min(0.6, Math.max(0.02, container.cpu + randomFactor));
         }
-        container.memory = Math.min(container.maxmem, Math.max(container.maxmem * 0.1, container.memory + (Math.random() * container.maxmem * 0.08 - container.maxmem * 0.04)));
-        container.netout += Math.random() * 1024 * 50;
-        container.netin += Math.random() * 1024 * 30;
-        container.diskwrite += Math.random() * 1024 * 5;
-        container.diskread += Math.random() * 1024 * 10;
+        
+        // Update memory with more variation
+        const memoryVariation = Math.random() * 0.16 - 0.08; // Random value between -0.08 and 0.08
+        container.memory = Math.min(container.maxmem, Math.max(container.maxmem * 0.1, container.memory + (container.maxmem * memoryVariation)));
+        
+        // Update network metrics with more realistic values
+        // Network traffic tends to come in bursts, so simulate that
+        const burstFactor = Math.random() > 0.8 ? 2 : 1; // 20% chance of a traffic burst
+        container.netout += Math.random() * 1024 * 512 * burstFactor; // Bytes per update
+        container.netin += Math.random() * 1024 * 256 * burstFactor; // Bytes per update
+        
+        // Update disk metrics
+        container.diskwrite += Math.random() * 1024 * 50; // Bytes per update
+        container.diskread += Math.random() * 1024 * 100; // Bytes per update
+        
         container.uptime += 10; // Add 10 seconds to uptime
+      } else if (container.status !== 'running') {
+        // For non-running containers, ensure metrics are zeroed out
+        if (container.cpu !== undefined) {
+          container.cpu = 0;
+        }
+        container.memory = 0;
+        container.netout = 0;
+        container.netin = 0;
+        container.diskwrite = 0;
+        container.diskread = 0;
       }
     });
     

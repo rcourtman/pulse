@@ -35,10 +35,15 @@ const useNetworkFilters = () => {
   const [showStopped, setShowStopped] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SHOW_STOPPED);
-      return saved ? JSON.parse(saved) === true : false; // Default: false (show only running systems)
+      if (saved === null) return null; // If no saved preference, show all systems
+      const parsedValue = JSON.parse(saved);
+      // Convert the old boolean values to the new tri-state system
+      if (parsedValue === true) return true; // Show stopped systems
+      if (parsedValue === false) return false; // Show running systems
+      return parsedValue; // Return the value as is (should be null, true, or false)
     } catch (e) {
       console.error('Error loading show stopped preference:', e);
-      return false; // Default to showing only running systems
+      return null; // Default to showing all systems
     }
   });
 
@@ -156,7 +161,7 @@ const useNetworkFilters = () => {
     });
     setActiveSearchTerms([]);
     setSearchTerm('');
-    setShowStopped(false);
+    setShowStopped(null);
     setGuestTypeFilter('all');
   }, []);
 

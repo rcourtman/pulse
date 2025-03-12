@@ -70,9 +70,8 @@ const useActiveFilteredColumns = ({
       result.type = true;
     }
     
-    // Only highlight status column for show/hide stopped systems if it's not the default state
-    // By default, showStopped is false, so we only highlight when it's true (showing stopped systems)
-    if (showStopped) {
+    // Highlight status column when we're filtering by status (not showing all)
+    if (showStopped !== null) {
       result.status = true;
     }
     
