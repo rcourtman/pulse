@@ -499,6 +499,30 @@ METRICS_POLLING_INTERVAL=2000
 METRICS_MAX_REALISTIC_RATE=125
 ```
 
+### Performance Tuning
+
+If you notice Pulse is consuming too many resources or overwhelming your Proxmox server, you can adjust several settings in your `.env` file:
+
+```bash
+# Polling Intervals - how often to fetch data from Proxmox API
+NODE_POLLING_INTERVAL_MS=15000  # Recommended default (original was 3000ms)
+EVENT_POLLING_INTERVAL_MS=5000  # Recommended default (original was 1000ms)
+
+# API Rate Limiting - controls API request frequency
+API_RATE_LIMIT_MS=2000          # Minimum time between API requests
+API_TIMEOUT_MS=90000            # Timeout for API requests
+API_RETRY_DELAY_MS=10000        # Delay before retrying failed requests
+
+# Memory Usage - controls how much data is kept in memory
+METRICS_HISTORY_MINUTES=30      # Recommended default (original was 60 minutes)
+
+# Reduce API calls by disabling cluster features if not needed
+PROXMOX_CLUSTER_MODE=false      # Disable cluster mode
+PROXMOX_AUTO_DETECT_CLUSTER=false  # Disable cluster detection
+```
+
+For more detailed information on performance tuning, see the [Getting Started Guide](GETTING-STARTED.md#performance-tuning).
+
 ## 🧑‍💻 Development
 
 If you're developing Pulse, you can use the development server:

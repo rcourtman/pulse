@@ -135,6 +135,43 @@ USE_MOCK_DATA=true
 MOCK_DATA_ENABLED=true
 ```
 
+## Performance Tuning
+
+If you notice that Pulse is consuming too many resources or overwhelming your Proxmox server, you can adjust several settings:
+
+### Polling Intervals
+- `NODE_POLLING_INTERVAL_MS`: How often to poll for node status (recommended: 15000ms, original was 3000ms)
+- `EVENT_POLLING_INTERVAL_MS`: How often to poll for events (recommended: 5000ms, original was 1000ms)
+
+### Metrics Storage
+- `METRICS_HISTORY_MINUTES`: How many minutes of metrics to keep in memory (recommended: 30, original was 60)
+
+### API Rate Limiting
+- `API_RATE_LIMIT_MS`: Minimum time between API requests (recommended: 2000ms)
+- `API_TIMEOUT_MS`: Timeout for API requests (recommended: 90000ms)
+- `API_RETRY_DELAY_MS`: Delay before retrying failed requests (recommended: 10000ms)
+
+### Cluster Settings
+If not using cluster mode, you can disable these features to reduce API calls:
+- `PROXMOX_CLUSTER_MODE=false`
+- `PROXMOX_AUTO_DETECT_CLUSTER=false`
+
+### Example Configuration
+Add these settings to your `.env` file or environment variables:
+
+```
+# Performance tuning
+NODE_POLLING_INTERVAL_MS=15000
+EVENT_POLLING_INTERVAL_MS=5000
+METRICS_HISTORY_MINUTES=30
+LOG_LEVEL=info
+API_RATE_LIMIT_MS=2000
+API_TIMEOUT_MS=90000
+API_RETRY_DELAY_MS=10000
+```
+
+After making changes, restart Pulse to apply the new settings.
+
 ## Troubleshooting
 
 If you encounter issues:
