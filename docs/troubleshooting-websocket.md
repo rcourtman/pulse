@@ -20,23 +20,45 @@ Try these solutions in order:
 Make sure you're using Pulse version 1.5.2 or later, which includes fixes for WebSocket connection issues:
 
 ```bash
+# Using Docker Compose
 docker pull rcourtman/pulse:latest
 docker compose down
 docker compose up -d
+
+# Using npm scripts
+npm run update
+npm run restart
 ```
 
-### 2. Remove VITE_API_URL from your .env file
+### 2. Check the logs for WebSocket connection issues
+
+Pulse includes powerful logging tools to help diagnose WebSocket connection issues:
+
+```bash
+# View all logs
+npm run logs
+
+# View WebSocket-specific logs
+npm run logs:websocket
+
+# Filter logs for connection issues
+node scripts/monitor-logs.js --search="websocket"
+```
+
+Look for messages related to WebSocket connections, particularly errors or warnings.
+
+### 3. Remove VITE_API_URL from your .env file
 
 If you've set `VITE_API_URL` in your `.env` file, try removing it completely. Pulse is designed to automatically determine the correct connection URL.
 
-### 3. Access Pulse directly by IP address
+### 4. Access Pulse directly by IP address
 
 Instead of using a domain name or localhost, try accessing Pulse directly by its IP address:
 ```
 http://192.168.x.x:7654
 ```
 
-### 4. Check your reverse proxy configuration
+### 5. Check your reverse proxy configuration
 
 If you're using a reverse proxy (like Nginx or Apache), make sure it's properly configured for WebSocket connections:
 
@@ -77,7 +99,7 @@ If none of the above solutions work, you can use Docker's host network mode as a
 ```yaml
 # In your docker-compose.yml
 services:
-  pulse-app:
+  pulse:
     image: rcourtman/pulse:latest
     # ... other settings ...
     network_mode: "host"
@@ -103,6 +125,14 @@ To debug the WebSocket connection:
 5. Look for connection attempts to `/socket.io`
 
 If you see failed connection attempts to `ws://localhost:7654` or `ws://127.0.0.1:7654` when you're accessing Pulse from a different IP, that's the root of the problem.
+
+You can also use the built-in connection checker tool:
+
+```bash
+node scripts/check-connections.js
+```
+
+This will test various connection methods and help identify the issue.
 
 ## Advanced Solutions
 
@@ -131,7 +161,7 @@ If you're running Pulse in Kubernetes:
 If you're still experiencing WebSocket connection problems after trying these solutions:
 
 1. Check your browser console for specific error messages
-2. Look at the Docker logs: `docker logs pulse-app`
+2. Look at the Docker logs: `docker logs pulse`
 3. Try a different browser or device
 4. Ensure no firewall is blocking WebSocket connections on port 7654
 

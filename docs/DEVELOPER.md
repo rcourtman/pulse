@@ -111,8 +111,8 @@ The WebSocket client:
 ### Split Development Architecture
 
 We use a split architecture during development:
-- Backend server (port 7654): Handles Proxmox API communication
-- Frontend server (port 3000): Provides hot reloading for React
+- Backend server (port 7655): Handles Proxmox API communication
+- Frontend server (port 7654): Provides hot reloading for React
 - Mock data server (port 7655): Generates mock data for development
 
 This separation allows for:
@@ -216,14 +216,51 @@ To set up the development environment:
    cd frontend && npm install && cd ..
    ```
 
-3. Start the development server:
+3. Configure your environment:
    ```bash
-   # With real Proxmox servers
+   cp .env.example .env
+   # Edit .env with your Proxmox details or use mock data
+   ```
+
+4. Start the development server:
+   ```bash
+   # With mock data (local)
    npm run dev
    
-   # With mock data
-   npm run dev:mock
+   # With mock data (Docker)
+   npm run dev:docker
+   
+   # With real Proxmox servers (local)
+   npm run prod
+   
+   # With real Proxmox servers (Docker)
+   npm run prod:docker
    ```
+
+### Environment Configuration
+
+Pulse uses a single `.env` file for configuration. When running in development mode, the application automatically sets development-specific environment variables:
+
+```bash
+NODE_ENV=development
+USE_MOCK_DATA=true
+MOCK_DATA_ENABLED=true
+```
+
+You can override these settings in your `.env` file if needed.
+
+### Testing Cluster Mode with Mock Data
+
+When using mock data, Pulse simulates nodes that are part of a cluster by default. This allows you to test the cluster detection and handling functionality without needing a real Proxmox cluster.
+
+You can control this behavior with these environment variables:
+
+```bash
+# Set to 'false' to disable mock cluster mode
+MOCK_CLUSTER_ENABLED=true
+# Custom name for the mock cluster
+MOCK_CLUSTER_NAME=mock-cluster
+```
 
 ### Adding a New Metric
 

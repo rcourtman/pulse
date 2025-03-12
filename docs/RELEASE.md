@@ -1,6 +1,6 @@
 # Pulse Release Guide
 
-This document outlines the process and checklist for creating new releases of the ProxMox Pulse application.
+This document outlines the process and checklist for creating new releases of the Pulse application.
 
 ## Release Types
 
@@ -13,423 +13,139 @@ Releases should be created when there are:
 
 For development-only changes (like dev dependency updates), wait for the next feature/bugfix release.
 
-## Prerequisites
+## Automated Release Process
 
-Before creating a release, ensure you have:
+We have an automated release script that handles most of the release process. The script:
+
+1. Updates version numbers in all relevant files
+2. Commits and pushes the changes
+3. Creates and pushes a Git tag
+4. Builds and pushes Docker images
+5. Creates a GitHub release
+
+### Prerequisites
+
+Before running the release script, ensure you have:
+
 - Git configured with appropriate credentials
 - Docker installed and logged in to Docker Hub
-- Docker buildx configured for multi-architecture builds:
-  ```bash
-  # Check if buildx is available
-  docker buildx version
-  
-  # List existing builders
-  docker buildx ls
-  
-  # Create a new builder if needed
-  docker buildx create --name multiarch-builder --driver docker-container --bootstrap
-  
-  # Use the builder
-  docker buildx use multiarch-builder
-  
-  # Verify platforms
-  docker buildx inspect --bootstrap
-  ```
 - GitHub CLI (`gh`) installed and authenticated
-- All changes committed to main branch
-- All items in the checklist below completed
+- All changes you want to include in the release are committed
 
-## Release Checklist
+### Running the Release Script
 
-1. **Preparation**
-   - [ ] Ensure all desired changes are committed and pushed to main
-   - [ ] Run tests to verify everything is working correctly
-   - [ ] Decide on new version number (MAJOR.MINOR.PATCH)
-
-2. **Documentation**
-   - [ ] Find the last release version:
-     ```bash
-     # List all release tags
-     git tag -l 'v*' --sort=-v:refname | head -n1
-     
-     # Or find it in CHANGELOG.md
-     head -n5 CHANGELOG.md
-     ```
-   - [ ] Review commits since last release:
-     ```bash
-     # Using the last release tag (e.g., v1.3.1)
-     git log v1.3.1..HEAD --pretty=format:"%h %s"
-     
-     # Or using commit dates if needed
-     git log --since="$(git log -1 --format=%ai v1.3.1)" --pretty=format:"%h %s"
-     ```
-   - [ ] Update CHANGELOG.md with new version section and date
-   - [ ] Categorize changes based on commit types:
-     - feat: → Added (new features)
-     - fix: → Fixed (bug fixes)
-     - security: → Security (security fixes)
-     - chore:/refactor:/perf: → Changed (changes in existing functionality)
-     - deprecate: → Deprecated (soon-to-be removed features)
-     - remove: → Removed (now removed features)
-     - docs: → Documentation (if significant)
-   - [ ] Ensure all significant changes are documented in the changelog
-   - [ ] Review and clean up the changelog entries:
-     - Use clear, user-focused language
-     - Group related changes together
-     - Remove internal/trivial changes
-     - Highlight breaking changes or required actions
-
-3. **Testing**
-   - [ ] Verify dependencies are properly installed and up-to-date:
-     ```bash
-     # Root directory
-     npm ci
-     
-     # Frontend directory
-     cd frontend && npm ci && cd ..
-     ```
-   - [ ] Build and test backend: `npm run build`
-   - [ ] Build and test frontend: `cd frontend && npm run build && cd ..`
-   - [ ] Test application using local development setup:
-     ```bash
-     # Start the application using the development script
-     npm run dev
-     
-     # This script will:
-     # 1. Stop any running Pulse Docker containers
-     # 2. Kill any existing servers on ports 7654 and 3000
-     # 3. Start the backend in development mode
-     # 4. Start the frontend Vite dev server
-     
-     # Verify in browser:
-     # 1. UI loads correctly at http://localhost:3000
-     # 2. Version number is correct
-     # 3. Can connect to Proxmox
-     # 4. Metrics are updating
-     # 5. All charts and graphs render
-     # 6. Hot reloading works for frontend changes
-     ```
-   - [ ] Test Docker build (for release verification):
-     ```bash
-     # Clean all existing containers and images
-     docker compose -f docker-compose.dev.yml down
-     docker rmi $(docker images -q rcourtman/pulse)
-     
-     # Build fresh and test locally using dev compose file
-     docker compose -f docker-compose.dev.yml up -d --build
-     
-     # Verify in browser:
-     # 1. UI loads correctly at http://localhost:7654
-     # 2. Version number is correct
-     # 3. Can connect to Proxmox
-     # 4. Metrics are updating
-     # 5. All charts and graphs render
-     
-     # Check logs for any errors
-     docker logs pulse-app
-     ```
-   - [ ] Test clean Docker installation:
-     ```bash
-     # Create a fresh test directory
-     mkdir -p /tmp/pulse-test && cd /tmp/pulse-test
-     
-     # Create minimal docker-compose.yml
-     cat > docker-compose.yml << 'EOF'
-     services:
-       pulse-app:
-         image: rcourtman/pulse:X.Y.Z
-         ports:
-           - "7654:7654"
-         env_file:
-           - .env
-         environment:
-           - NODE_ENV=production
-         restart: unless-stopped
-     EOF
-     
-     # Copy your test .env file
-     cp /path/to/your/test/.env .
-     
-     # Test deployment
-     docker compose up -d
-     
-     # Verify as above and check logs
-     docker logs pulse-app
-     ```
-   - [ ] Test multi-architecture support:
-     ```bash
-     # Verify both architectures
-     docker buildx imagetools inspect rcourtman/pulse:X.Y.Z
-     
-     # Test pulling on different architectures if available
-     ```
-
-## Development Workflow
-
-For active development, use `npm run dev` instead of Docker. This script provides:
-- Hot reloading for frontend changes
-- Automatic backend restart on changes
-- Direct access to logs and debugging
-- Faster iteration cycles than Docker rebuilds
+To create a new release:
 
 ```bash
-# Start development servers
-npm run dev
-
-# Access the application:
-# - Frontend: http://localhost:3000 (with hot reloading)
-# - Backend: http://localhost:7654
+./scripts/release.sh <version>
 ```
 
-Additional development commands available:
+For example:
+
 ```bash
-# Kill specific processes if needed
-npm run dev:kill:backend  # Kill backend server
-npm run dev:kill:frontend # Kill frontend server
-npm run dev:kill:all     # Kill all development servers
-
-# Start frontend separately if needed
-npm run dev:frontend
-
-# Use mock data for development
-npm run dev:mock
+./scripts/release.sh 1.0.13
 ```
 
-Only use Docker testing when:
-- Verifying the release build
-- Testing multi-architecture support
-- Checking production deployment configurations
-- Validating the Docker image before release
+The script will:
 
-## Release Process
+1. Check that you're on the main branch and have a clean working directory
+2. Update version numbers in:
+   - `frontend/src/utils/version.js`
+   - `package.json`
+   - `frontend/package.json`
+   - `Dockerfile` labels
+3. Commit and push these changes
+4. Create and push a Git tag (e.g., `v1.0.13`)
+5. Build Docker images for both the specific version and `latest`
+6. Push the Docker images to Docker Hub
+7. Create a GitHub release
 
-1. **Update version numbers in ALL files** (⚠️ CRITICAL - VERIFY ALL FILES):
-   - [ ] `frontend/src/utils/version.js`
-   - [ ] `package.json`
-   - [ ] `frontend/package.json`
-   - [ ] `Dockerfile` labels (update version in LABEL version="X.Y.Z")
-   
-   ⚠️ **IMPORTANT**: Verify each file has been updated with the new version number. Missing any file will cause version inconsistencies.
+### After Running the Script
 
-   > **For LLM Assistants**: When updating version numbers, ensure you check each file individually and update all occurrences of the version number. After updating, verify that all files have been properly updated by checking the content of each file.
+After the script completes:
 
-2. Rebuild the frontend with the new version:
+1. GitHub Actions workflows will be triggered automatically
+2. The "Update Version" workflow will run first
+3. Once that completes, the "Publish Docker image" workflow will run
+
+You can check the status of these workflows with:
+
+```bash
+gh run list --limit 5
+```
+
+## Manual Release Process (if needed)
+
+If you need to perform a release manually, follow these steps:
+
+1. Update version numbers in:
+   - `frontend/src/utils/version.js`
+   - `package.json`
+   - `frontend/package.json`
+   - `Dockerfile` labels
+
+2. Commit and push these changes:
    ```bash
-   # Clean the frontend build directory
-   rm -rf frontend/dist
-   
-   # Rebuild the frontend
-   cd frontend && npm run build && cd ..
-   
-   # Verify the new version appears in the built files
-   grep -r "VERSION = " frontend/dist/assets/*.js
-   ```
-
-3. Test the build locally:
-   ```bash
-   # Build and run locally to verify version using dev compose file
-   docker compose -f docker-compose.dev.yml up -d --build
-   
-   # Check the version in UI at http://localhost:7654
-   # IMPORTANT: Verify the version number matches the new release version
-   ```
-
-4. **Commit ALL version updates** (⚠️ CRITICAL - VERIFY ALL FILES):
-   ```bash
-   # Check for any uncommitted changes
-   git status
-   
-   # Add all version-related files and the built frontend
-   git add frontend/src/utils/version.js package.json frontend/package.json Dockerfile frontend/dist
-   
-   # Commit the changes
-   git commit -m "chore: bump version to X.Y.Z"
-   
-   # Push to main
+   git add frontend/src/utils/version.js package.json frontend/package.json Dockerfile
+   git commit -m "Bump version to X.Y.Z"
    git push origin main
-   
-   # Verify all changes were committed and pushed
-   git status
    ```
-   
-   ⚠️ **IMPORTANT**: After pushing, run `git status` to verify there are no remaining uncommitted changes related to version updates.
 
-   > **For LLM Assistants**: Always verify that ALL version-related files have been committed by checking the git status before and after the commit. If any version-related files are still showing as modified after the commit, they need to be added and committed as well.
-
-5. Create and push tag:
+3. Create and push a Git tag:
    ```bash
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
 
-6. **Build and push multi-architecture Docker images** (⚠️ CRITICAL - MUST BUILD FOR MULTIPLE ARCHITECTURES):
+4. Build Docker images:
    ```bash
-   # Verify buildx setup
-   docker buildx ls
-   
-   # Ensure using correct builder
-   docker buildx use multiarch-builder
-   
-   # Build and push multi-architecture images
-   # IMPORTANT: The --platform flag MUST specify both architectures
-   docker buildx build \
-     --platform linux/amd64,linux/arm64 \
-     --tag rcourtman/pulse:X.X.X \
-     --tag rcourtman/pulse:latest \
-     --push \
-     .
-   
-   # Verify BOTH architectures are available in the pushed image
-   docker buildx imagetools inspect rcourtman/pulse:X.X.X
-   ```
-   
-   ⚠️ **IMPORTANT**: Always verify that both `linux/amd64` and `linux/arm64` platforms appear in the image inspection output. If either is missing, the multi-architecture build was not successful.
-
-   > **For LLM Assistants**: After building and pushing the Docker images, always check the output of `docker buildx imagetools inspect` to confirm that both architectures are present. This is a critical step that should never be skipped.
-
-7. Create GitHub release:
-   ```bash
-   # Extract the latest version's changes from CHANGELOG.md
-   awk '/^## \[.*\]/{p=NR==1}p' CHANGELOG.md > release-notes.tmp
-   
-   # Create the release using the extracted notes
-   gh release create vX.Y.Z --title "Release vX.Y.Z" --notes-file release-notes.tmp
-   
-   # Clean up
-   rm release-notes.tmp
+   docker build -t rcourtman/pulse:X.Y.Z -t rcourtman/pulse:latest .
    ```
 
-   > **For LLM Assistants**: If the awk command doesn't extract the release notes correctly, try alternative approaches like using grep or manually extracting the relevant section from the CHANGELOG.md file.
+5. Push Docker images:
+   ```bash
+   docker push rcourtman/pulse:X.Y.Z
+   docker push rcourtman/pulse:latest
+   ```
 
-8. **Release Verification Checklist**
-   - [ ] GitHub Actions:
-     - All workflows completed successfully
-     - No warnings or errors in logs
-   
-   - [ ] Docker Image Testing:
-     - [ ] Fresh pull test:
-       ```bash
-       docker pull rcourtman/pulse:X.Y.Z
-       ```
-     - [ ] Clean installation test:
-       - Create new directory with only docker-compose.yml and .env
-       - Deploy using pulled image
-       - Verify functionality
-     - [ ] Version verification:
-       - Check version in UI matches release
-       - Check version in Docker labels
-       - Check version in application logs
-     - [ ] **Multi-architecture verification** (⚠️ CRITICAL):
-       - [ ] Confirm both amd64 and arm64 images are available:
-         ```bash
-         docker buildx imagetools inspect rcourtman/pulse:X.Y.Z
-         ```
-       - [ ] Verify the output shows both `linux/amd64` and `linux/arm64` platforms
-       - [ ] Test on different architectures if possible
-   
-   - [ ] Application Functionality:
-     - [ ] UI loads correctly
-     - [ ] Static assets are served properly
-     - [ ] Can connect to Proxmox
-     - [ ] Metrics collection works
-     - [ ] Charts and graphs render
-     - [ ] WebSocket connection stable
-     - [ ] No console errors
-   
-   - [ ] Documentation:
-     - [ ] README is up to date
-     - [ ] CHANGELOG reflects all changes
-     - [ ] Docker Hub description is current
-     - [ ] GitHub release notes are clear
+6. Create a GitHub release:
+   ```bash
+   gh release create vX.Y.Z --title "Release vX.Y.Z" --notes "Release notes here"
+   ```
 
-   - [ ] Regression Testing:
-     - [ ] Previously reported issues remain fixed
-     - [ ] No new issues introduced
-     - [ ] Core features working as expected
+## Release Checklist
 
-   > **For LLM Assistants**: Work through this verification checklist methodically, checking each item and reporting any issues found. Pay special attention to the multi-architecture verification step.
+Before finalizing a release, ensure:
 
-If any of these checks fail:
-1. Do not proceed with the release
-2. Document the failure
-3. Fix the issue
-4. Restart testing from the beginning
+- [ ] All tests pass
+- [ ] Documentation is updated
+- [ ] CHANGELOG.md is updated with new features, fixes, and breaking changes
+- [ ] Version numbers are consistent across all files
+- [ ] Docker images build successfully
+- [ ] The application runs correctly in both development and production modes
 
 ## Troubleshooting
 
-### GitHub Actions Issues
-- Check workflow files in `.github/workflows/`
-- Ensure proper event triggers
-- Check GitHub Actions tab for errors
+### GitHub Actions Workflows Not Running
 
-### Docker Issues
-- Verify Docker daemon is running
-- Check Docker Hub authentication: `docker login`
-- Verify push permissions
-- Check multi-arch builder setup:
-  ```bash
-  # If buildx builder is missing or not working
-  docker buildx create --name multiarch-builder --driver docker-container --bootstrap
-  docker buildx use multiarch-builder
-  docker buildx inspect --bootstrap
-  ```
-- If build fails, try rebuilding the builder:
-  ```bash
-  docker buildx rm multiarch-builder
-  docker buildx create --name multiarch-builder --driver docker-container --bootstrap
-  ```
-- For faster builds:
-  - The multi-stage Dockerfile optimizes builds by:
-    - Caching frontend and backend builds separately
-    - Only rebuilding stages that have changed
-    - Minimizing the final image size
-  - Frontend-only changes (like version updates) will only rebuild the frontend stage
-  - Backend-only changes will only rebuild the backend stage
-  - To force a clean build: `docker buildx build --no-cache ...`
-  - To clean up old build cache: `docker builder prune`
-  - To see what's using build cache: `docker buildx du`
-  - For version updates, ensure you:
-    1. Update version in all files
-    2. Rebuild frontend locally and verify version
-    3. Commit changes including built frontend
-    4. Build and push Docker image
+If the GitHub Actions workflows don't run automatically:
 
-### Version Mismatches
-- Verify all version files are updated:
-  - `frontend/src/utils/version.js`
-  - `package.json`
-  - `frontend/package.json`
-  - `Dockerfile` labels
-- Always rebuild frontend after version changes
-- Verify version in built frontend before creating Docker image
-- Test version in UI after Docker build
-- Create patch release if needed
+1. Check the workflow files in `.github/workflows/`
+2. Ensure they're configured to trigger on the appropriate events
+3. Check the GitHub Actions tab in the repository for any errors
 
-### Multi-Architecture Build Issues
-- If multi-architecture build fails:
-  - Verify buildx is properly configured
-  - Check that the builder supports both architectures
-  - Ensure you're using the `--platform linux/amd64,linux/arm64` flag
-  - Verify Docker Hub credentials are valid
-  - Try recreating the builder if issues persist
-- If only one architecture is built:
-  - The `--platform` flag may be missing or incomplete
-  - The builder may not support all architectures
-  - Check for build errors specific to one architecture
+### Docker Build or Push Issues
 
-## Post-Release
+If you encounter issues with Docker:
 
-1. Verify the release is working in production
-2. Clean up any temporary files/branches
-3. Announce release to users if needed
-4. Update documentation if required
-5. Start planning next release 
+1. Ensure you're logged in to Docker Hub: `docker login`
+2. Check that you have permissions to push to the repository
+3. Verify that the Docker daemon is running
 
-## Release Checklist Quick Reference
+### Version Mismatch
 
-### Critical Steps (Don't Miss These!)
-1. ✅ Update ALL version files (frontend/src/utils/version.js, package.json, frontend/package.json, Dockerfile)
-2. ✅ Commit and push ALL version-related changes (verify with git status)
-3. ✅ Build for BOTH architectures (linux/amd64,linux/arm64)
-4. ✅ Verify multi-architecture support after pushing
-5. ✅ Test the release thoroughly before announcing 
+If you notice version mismatches:
+
+1. Check all files that contain version information
+2. Ensure they're all updated to the same version
+3. If necessary, make manual corrections and create a new patch release

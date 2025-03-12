@@ -26,7 +26,7 @@ The screenshot tool is configured via a JSON file located at `tools/screenshot-a
 
 ```json
 {
-  "baseUrl": "http://localhost:3000",
+  "baseUrl": "http://localhost:7654",
   "outputDir": "docs/images",
   "screenshots": [
     {

@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+- New one-line installation command: `git clone https://github.com/rcourtman/pulse.git && cd pulse && npm run install:pulse`
+- Interactive installation script (`scripts/install.sh`) for guided setup
+- New logging system with advanced filtering and real-time monitoring
+- Comprehensive logging documentation in `docs/logging.md`
+- New utility scripts for troubleshooting and configuration
+- Getting Started guide (`GETTING-STARTED.md`) for new users
+- Improved metrics service with better rate detection and capping
+- New npm scripts for common operations (logs, status, restart, stop, cleanup)
 - Proxmox cluster support: Added automatic detection and handling of Proxmox clusters
   - System now automatically detects if nodes are part of a cluster without manual configuration
   - Manual configuration via PROXMOX_CLUSTER_MODE is still supported but optional
@@ -11,17 +19,39 @@
 - Mock cluster simulation for development and testing
 - New mock data environment variables: MOCK_CLUSTER_ENABLED and MOCK_CLUSTER_NAME (optional)
 - Updated documentation for mock data and cluster functionality
-- Environment-specific configuration files (.env.development and .env.production)
+- Simplified environment configuration with a single .env file
 - Improved development and production scripts for better cross-platform support
 - New start-prod.sh and start-prod.bat scripts for production deployment
 - Comprehensive mock data documentation in docs/MOCK_DATA.md
 - Enhanced Docker development environment with detached mode and cleanup commands
 
 ### Changed
-- Refactored environment handling to use environment-specific configuration files
-- Improved development scripts to automatically detect and use the appropriate environment
-- Updated README with detailed information about environment configuration and scripts
-- Enhanced Docker development workflow with better cleanup and detached mode options
+- Simplified environment configuration with a single `.env` file instead of multiple environment-specific files
+- Improved Docker configuration with dynamic environment variables
+- Restructured project organization for better maintainability
+- Updated container name from `pulse-app` to `pulse`
+- Moved Docker files to `docker/` directory
+- Enhanced metrics service to handle unrealistic network rates
+- Updated documentation to reflect new simplified configuration
+- Improved WebSocket troubleshooting with new diagnostic tools
+- Combine system type and visibility filters, improve UI design
+- Refactor NetworkDisplay component into smaller, more manageable files with custom hooks and components
+- Optimize column widths for space conservation in network table
+- Refactor proxmox-client.ts into smaller modules for better maintainability
+- Enhance network table UI with improved filtering and search functionality
+- Improve space efficiency for important metric columns
+- Standardize styling across all dropdown menus and popovers
+- Move status column to leftmost position for better organization
+- Center status icons for better visual alignment
+- Replace status text with icon-only display to save space
+- Updated README with new screenshots and improved documentation
+- Enhance export functionality with additional fields (Type, ID, Uptime) in NetworkDisplay
+- Clarify node vs guest counts in dropdown by adding descriptive labels
+
+### Removed
+- Separate environment files (`.env.development`, `.env.production`)
+- Redundant Docker Compose files (merged into a single configurable file)
+- Legacy startup scripts (replaced with the new launcher system)
 
 ## [1.5.4] - 2024-03-26
 
@@ -39,7 +69,7 @@
 - Enhanced WebSocket connection handling to work correctly in bridge network mode
 - Improved hostname resolution for WebSocket connections
 
-## [1.5.2] - 2025-03-10
+## [1.5.2] - 2025-03-01
 
 ### Fixed
 - WebSocket connection issues in Docker environments by using the browser's hostname instead of hardcoded localhost

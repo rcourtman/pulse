@@ -15,16 +15,47 @@ The mock data system simulates:
 
 To use mock data during development:
 
-1. Set the following environment variables in your `.env.development` file:
+1. Set the following environment variables in your `.env` file:
    ```
+   NODE_ENV=development
    USE_MOCK_DATA=true
    MOCK_DATA_ENABLED=true
    ```
 
 2. Start the development server with mock data:
    ```bash
-   npm run dev:mock
+   # Local development with mock data
+   npm run dev
+   
+   # Docker development with mock data
+   npm run dev:docker
    ```
+
+These npm scripts automatically set the required environment variables for mock data.
+
+## Mock Data Configuration
+
+You can customize the mock data behavior with these environment variables:
+
+```bash
+# Number of mock nodes to generate
+MOCK_NODE_COUNT=3
+
+# Enable/disable mock cluster mode
+MOCK_CLUSTER_ENABLED=true
+
+# Custom name for the mock cluster
+MOCK_CLUSTER_NAME=mock-cluster
+
+# Number of VMs per node
+MOCK_VM_COUNT=10
+
+# Number of containers per node
+MOCK_CT_COUNT=10
+
+# Enable/disable random failures for testing error handling
+MOCK_RANDOM_FAILURES=false
+```
 
 ## Cluster Mode in Mock Data
 
@@ -44,15 +75,26 @@ When cluster mode is disabled:
 
 ### Configuring Cluster Mode
 
-You can control cluster mode through the environment variable:
+You can control cluster mode through environment variables:
 
 ```
-# In .env, .env.development, or .env.production
-PROXMOX_CLUSTER_MODE=true  # Enable cluster mode
-PROXMOX_CLUSTER_MODE=false # Disable cluster mode
+# In your .env file
+# Cluster mode is enabled by default and automatically detected
+# Only set these if you want to override the automatic behavior:
+PROXMOX_AUTO_DETECT_CLUSTER=false  # Disable automatic cluster detection
+PROXMOX_CLUSTER_MODE=false         # Disable cluster mode even if a cluster is detected
+PROXMOX_CLUSTER_NAME=my-cluster    # Set a custom name for your cluster
 ```
 
-The system will also automatically detect if your nodes are part of a cluster based on the API response.
+For mock data specifically, you can control the mock cluster behavior:
+
+```
+# Enable/disable mock cluster mode
+MOCK_CLUSTER_ENABLED=true
+
+# Custom name for the mock cluster
+MOCK_CLUSTER_NAME=mock-cluster
+```
 
 ### Testing Cluster Mode
 
@@ -62,9 +104,11 @@ The mock data includes "shared" VMs and containers that exist on multiple nodes:
 
 To test cluster mode functionality:
 
-1. Set `PROXMOX_CLUSTER_MODE=true` to see consolidated VMs/containers
-2. Set `PROXMOX_CLUSTER_MODE=false` to see duplicate VMs/containers for each node
-3. Restart the server after changing this setting
+1. Use `npm run dev` to run with cluster mode enabled (default)
+   - You'll see only one instance of "shared-vm" and "shared-container" in the UI
+   
+2. Use `npm run dev:no-cluster` to run with cluster mode disabled
+   - You'll see multiple instances of "shared-vm" and "shared-container" in the UI, one for each node
 
 You can filter for these shared resources in the dashboard by typing "shared" in the search box.
 
@@ -87,6 +131,6 @@ If you encounter issues with mock data:
 1. Ensure the environment variables are set correctly
 2. Check the console logs for any errors related to mock data generation
 3. Restart the development server to regenerate the mock data
-4. Verify that the `.env.development` file has the correct settings
+4. Verify that your `.env` file has the correct settings
 
 For more detailed information about development tools, see [README-dev-tools.md](../scripts/README-dev-tools.md). 
