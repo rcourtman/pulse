@@ -16,7 +16,7 @@ async function debugFilterUI() {
     
     // Navigate to the resources page
     console.log('Navigating to the resources page');
-    await page.goto('http://localhost:3000/resources', { waitUntil: 'networkidle2' });
+    await page.goto('http://localhost:7654/resources', { waitUntil: 'networkidle2' });
     
     // Wait for the page to load
     console.log('Waiting for page to load');

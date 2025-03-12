@@ -14,7 +14,7 @@ const puppeteer = require('puppeteer');
     const page = await browser.newPage();
     
     // Navigate to the resources page
-    await page.goto('http://localhost:3000/resources');
+    await page.goto('http://localhost:7654/resources');
     console.log('Navigated to resources page');
     
     // Wait for the page to load
@@ -205,7 +205,7 @@ const puppeteer = require('puppeteer');
     }
     
     // Navigate to memory sort page
-    await page.goto('http://localhost:3000/resources?sort=memory&order=desc');
+    await page.goto('http://localhost:7654/resources?sort=memory&order=desc');
     console.log('Navigated to memory sort page');
     
     // Wait for the page to load

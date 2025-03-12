@@ -57,7 +57,7 @@ The tool is configured via a JSON file. By default, it looks for `screenshot-con
 
 ```json
 {
-  "baseUrl": "http://localhost:3000",
+  "baseUrl": "http://localhost:7654",
   "outputDir": "docs/images",
   "screenshots": [
     {
@@ -92,7 +92,7 @@ The tool is configured via a JSON file. By default, it looks for `screenshot-con
 
 ### Configuration Options
 
-- `baseUrl`: The base URL of the application (default: `http://localhost:3000`)
+- `baseUrl`: The base URL of the application (default: `http://localhost:7654`)
 - `outputDir`: The directory where screenshots will be saved (default: `docs/images`)
 - `screenshots`: An array of screenshot definitions
 

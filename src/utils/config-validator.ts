@@ -69,8 +69,20 @@ async function validateNodeConfig(nodeConfig: NodeConfig, ignoreSSLErrors: boole
       timeout: apiTimeoutMs
     };
     
+    // Determine if SSL verification should be disabled
+    // Check multiple environment variables that could control SSL verification
+    const disableSSLVerification = 
+      ignoreSSLErrors || 
+      process.env.PROXMOX_REJECT_UNAUTHORIZED === 'false' ||
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ||
+      process.env.HTTPS_REJECT_UNAUTHORIZED === 'false' ||
+      process.env.PROXMOX_INSECURE === 'true' ||
+      process.env.PROXMOX_VERIFY_SSL === 'false' ||
+      process.env.IGNORE_SSL_ERRORS === 'true';
+    
     // Add SSL certificate validation bypass if needed
-    if (ignoreSSLErrors) {
+    if (disableSSLVerification) {
+      logger.warn(`Node ${nodeConfig.id}: SSL certificate verification is disabled. This is insecure and should only be used with trusted networks.`);
       axiosConfig.httpsAgent = new https.Agent({
         rejectUnauthorized: false
       });

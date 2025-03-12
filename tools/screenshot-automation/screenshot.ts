@@ -22,7 +22,7 @@ class ScreenshotTool {
   constructor(configPath: string) {
     // Load configuration
     this.config = this.loadConfig(configPath);
-    this.baseUrl = this.config.baseUrl || 'http://localhost:3000';
+    this.baseUrl = this.config.baseUrl || 'http://localhost:7656';
     this.outputDir = this.config.outputDir || path.join(process.cwd(), 'docs', 'images');
     
     // Ensure output directory exists
@@ -311,56 +311,25 @@ class ScreenshotTool {
   }
   
   private async setDarkMode(page: Page): Promise<void> {
-    try {
-      // Based on the application's ThemeContext implementation
-      await page.evaluate(() => {
-        // Set dark mode in localStorage
-        localStorage.setItem('app_dark_mode', JSON.stringify(true));
-        
-        // Force reload the page to ensure theme is applied
-        window.location.reload();
-      });
+    logger.info('Setting dark mode');
+    
+    await page.evaluate(() => {
+      localStorage.setItem('app_dark_mode', JSON.stringify(true));
+      localStorage.setItem('use_mock_data', 'true');
+      localStorage.setItem('MOCK_DATA_ENABLED', 'true');
+      localStorage.setItem('mock_enabled', 'true');
+      localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7656');
       
-      // Wait for page to reload and stabilize
-      await page.waitForNavigation({ waitUntil: 'networkidle2' });
-      await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 2000)));
+      // Also set global variables that might be used
+      (window as any).USE_MOCK_DATA = true;
+      (window as any).MOCK_DATA_ENABLED = true;
+      (window as any).MOCK_SERVER_URL = 'http://localhost:7656';
       
-      // Verify dark mode is applied
-      const isDarkMode = await page.evaluate(() => {
-        // Check if body has dark mode classes or computed styles
-        const bodyStyles = window.getComputedStyle(document.body);
-        const backgroundColor = bodyStyles.backgroundColor;
-        // Dark backgrounds typically have low RGB values
-        const isDark = backgroundColor.includes('rgb(18, 18, 18)') || 
-                      backgroundColor.includes('rgb(30, 30, 30)') ||
-                      backgroundColor.includes('rgba(18, 18, 18)') ||
-                      document.documentElement.classList.contains('dark-mode');
-        
-        console.log('Current background color:', backgroundColor);
-        return isDark;
-      });
-      
-      if (isDarkMode) {
-        logger.info('Dark mode successfully applied');
-      } else {
-        logger.warn('Dark mode may not have been applied correctly');
-        
-        // Try an alternative approach - click the theme toggle button if available
-        try {
-          // Look for theme toggle button
-          const themeToggleButton = await page.$('button[aria-label*="dark mode" i], button[aria-label*="light mode" i]');
-          if (themeToggleButton) {
-            logger.info('Found theme toggle button, clicking it');
-            await themeToggleButton.click();
-            await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 1000)));
-          }
-        } catch (error) {
-          logger.warn(`Error trying to click theme toggle: ${error}`);
-        }
+      // Apply theme if the function exists
+      if (window.applyTheme) {
+        window.applyTheme();
       }
-    } catch (error) {
-      logger.error(`Error setting dark mode: ${error}`);
-    }
+    });
   }
   
   private async setLightMode(page: Page): Promise<void> {
@@ -805,68 +774,28 @@ class ScreenshotTool {
     return await sharp(svgBuffer).toBuffer();
   }
   
-  // Helper method to set up mock data
+  /**
+   * Set up mock data for testing
+   */
   private async setupMockData(page: Page): Promise<void> {
-    try {
-      // Set up mock data using evaluateOnNewDocument only
-      // This ensures it's applied before any scripts run on navigation
-      await page.evaluateOnNewDocument((setupScript) => {
-        try {
-          // Enable mock data mode using various possible keys
-          localStorage.setItem('use_mock_data', 'true');
-          localStorage.setItem('MOCK_DATA_ENABLED', 'true');
-          localStorage.setItem('mock_enabled', 'true');
-          localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7655');
-          
-          // Set a global flag that the app might check
-          if (typeof window !== 'undefined') {
-            (window as any).USE_MOCK_DATA = true;
-            (window as any).MOCK_DATA_ENABLED = true;
-            (window as any).MOCK_SERVER_URL = 'http://localhost:7655';
-          }
-          
-          // Execute any custom setup script if provided
-          if (setupScript) {
-            eval(setupScript);
-          }
-          
-          console.log('Mock data mode enabled for screenshots');
-        } catch (error) {
-          console.error('Error setting up mock data:', error);
-        }
-      }, this.config.mockData?.setupScript);
+    logger.info('Setting up mock data');
+    
+    // Set mock data flags in localStorage before navigation
+    await page.evaluateOnNewDocument(() => {
+      localStorage.setItem('use_mock_data', 'true');
+      localStorage.setItem('MOCK_DATA_ENABLED', 'true');
+      localStorage.setItem('mock_enabled', 'true');
+      localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7656');
       
-      // Also set up mock data in the page context after navigation
-      await page.evaluate(() => {
-        try {
-          // Enable mock data mode using various possible keys
-          localStorage.setItem('use_mock_data', 'true');
-          localStorage.setItem('MOCK_DATA_ENABLED', 'true');
-          localStorage.setItem('mock_enabled', 'true');
-          localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7655');
-          
-          // Set a global flag that the app might check
-          if (typeof window !== 'undefined') {
-            (window as any).USE_MOCK_DATA = true;
-            (window as any).MOCK_DATA_ENABLED = true;
-            (window as any).MOCK_SERVER_URL = 'http://localhost:7655';
-          }
-          
-          console.log('Mock data mode enabled in page context');
-          
-          // Force a reload if needed
-          if (!(window as any).__MOCK_DATA_INITIALIZED) {
-            (window as any).__MOCK_DATA_INITIALIZED = true;
-            // Don't reload here as it would break the page flow
-          }
-        } catch (error) {
-          console.error('Error setting up mock data in page context:', error);
-        }
-      });
-      
-      logger.info('Mock data setup completed');
-    } catch (error) {
-      logger.error(`Error setting up mock data: ${error}`);
+      // Also set global variables that might be used
+      (window as any).USE_MOCK_DATA = true;
+      (window as any).MOCK_DATA_ENABLED = true;
+      (window as any).MOCK_SERVER_URL = 'http://localhost:7656';
+    });
+    
+    // Execute any custom setup script from config
+    if (this.config.mockData?.setupScript) {
+      await page.evaluateOnNewDocument(this.config.mockData.setupScript);
     }
   }
   

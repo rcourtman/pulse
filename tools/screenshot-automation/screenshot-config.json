@@ -1,9 +1,9 @@
 {
-  "baseUrl": "http://localhost:3000",
+  "baseUrl": "http://localhost:7654",
   "outputDir": "../../docs/images",
   "mockData": {
     "enabled": true,
-    "mockDataUrl": "http://localhost:3000/api/mock-data",
+    "mockDataUrl": "http://localhost:7654/api/mock-data",
     "setupScript": "window.localStorage.setItem('use_mock_data', 'true'); window.localStorage.setItem('MOCK_DATA_ENABLED', 'true'); window.localStorage.setItem('mock_enabled', 'true'); console.log('Mock data flags set in localStorage');"
   },
   "screenshots": [

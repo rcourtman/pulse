@@ -4,7 +4,7 @@
 # This script automates the process of taking screenshots for documentation
 
 # Set default values
-DEV_SERVER_URL="http://localhost:3000"
+DEV_SERVER_URL="http://localhost:7654"
 BACKEND_URL="http://localhost:7654"
 CONFIG_FILE="screenshot-config.json"
 MAX_RETRIES=3
@@ -58,6 +58,9 @@ done
 
 # Change to the script directory
 cd "$(dirname "$0")"
+
+# Make script executable if it isn't already
+chmod +x "$0"
 
 # Function to check if mock data is enabled on the server
 check_mock_data() {

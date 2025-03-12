@@ -1,10 +1,10 @@
 {
-  "baseUrl": "http://localhost:3000",
+  "baseUrl": "http://localhost:7654",
   "outputDir": "../../docs/images",
   "mockData": {
     "enabled": true,
-    "mockDataUrl": "http://localhost:7655",
-    "setupScript": "window.localStorage.setItem('use_mock_data', 'true'); window.localStorage.setItem('MOCK_DATA_ENABLED', 'true'); window.localStorage.setItem('mock_enabled', 'true'); window.localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7655'); console.log('Mock data flags set in localStorage'); if (typeof window !== 'undefined') { window.USE_MOCK_DATA = true; window.MOCK_DATA_ENABLED = true; }"
+    "mockDataUrl": "http://localhost:7656",
+    "setupScript": "window.localStorage.setItem('use_mock_data', 'true'); window.localStorage.setItem('MOCK_DATA_ENABLED', 'true'); window.localStorage.setItem('mock_enabled', 'true'); window.localStorage.setItem('MOCK_SERVER_URL', 'http://localhost:7656'); console.log('Mock data flags set in localStorage'); if (typeof window !== 'undefined') { window.USE_MOCK_DATA = true; window.MOCK_DATA_ENABLED = true; }"
   },
   "screenshots": [
     {
