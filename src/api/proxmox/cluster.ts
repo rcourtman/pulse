@@ -15,16 +15,26 @@ export async function isNodeInCluster(this: ProxmoxClient): Promise<{ isCluster:
     // Try to access the cluster status endpoint
     const response = await this.client.get('/cluster/status');
     
-    if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
-      // If we get a valid response with data, the node is part of a cluster
-      // Find the cluster name from the response
+    // Log the full response for debugging
+    this.logger.debug(`Cluster status response: ${JSON.stringify(response.data)}`);
+    
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
+      // Only consider it a cluster if we find an item with type: "cluster"
       const clusterInfo = response.data.data.find((item: any) => item.type === 'cluster');
-      const clusterName = clusterInfo?.name || 'proxmox-cluster';
       
-      this.logger.info(`Node is part of cluster: ${clusterName}`);
-      return { isCluster: true, clusterName };
+      // Log the cluster info for debugging
+      this.logger.debug(`Cluster info: ${JSON.stringify(clusterInfo)}`);
+      
+      if (clusterInfo && clusterInfo.type === 'cluster') {
+        const clusterName = clusterInfo.name || 'proxmox-cluster';
+        this.logger.info(`Node is part of cluster: ${clusterName}`);
+        return { isCluster: true, clusterName };
+      } else {
+        this.logger.info('Node has cluster API but no cluster type found - not part of a cluster');
+        return { isCluster: false, clusterName: '' };
+      }
     } else {
-      this.logger.info('Node is not part of a cluster');
+      this.logger.info('Node is not part of a cluster (empty response data)');
       return { isCluster: false, clusterName: '' };
     }
   } catch (error: any) {

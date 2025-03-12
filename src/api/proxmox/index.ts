@@ -37,6 +37,21 @@ export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods 
       this.retryAttempts = parseInt(process.env.API_RETRY_ATTEMPTS || '3', 10);
       this.retryDelayMs = parseInt(process.env.API_RETRY_DELAY_MS || '5000', 10);
       
+      // Determine if SSL verification should be disabled
+      // Check multiple environment variables that could control SSL verification
+      const disableSSLVerification = 
+        ignoreSSLErrors || 
+        process.env.PROXMOX_REJECT_UNAUTHORIZED === 'false' ||
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ||
+        process.env.HTTPS_REJECT_UNAUTHORIZED === 'false' ||
+        process.env.PROXMOX_INSECURE === 'true' ||
+        process.env.PROXMOX_VERIFY_SSL === 'false' ||
+        process.env.IGNORE_SSL_ERRORS === 'true';
+      
+      if (disableSSLVerification) {
+        this.logger.warn('SSL certificate verification is disabled. This is insecure and should only be used with trusted networks.');
+      }
+      
       // Create axios instance with base configuration
       const axiosConfig = {
         baseURL: `${config.host}/api2/json`,
@@ -45,7 +60,7 @@ export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods 
         },
         timeout: apiTimeoutMs,
         httpsAgent: new https.Agent({
-          rejectUnauthorized: !ignoreSSLErrors
+          rejectUnauthorized: !disableSSLVerification
         })
       };
       
@@ -100,6 +115,11 @@ export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods 
           return Promise.reject(error);
         }
       );
+
+      // Initialize cluster detection if auto-detection is enabled
+      if (config.autoDetectCluster) {
+        this.initializeClusterDetection();
+      }
     }
   }
 
@@ -137,6 +157,39 @@ export class ProxmoxClient extends EventEmitter implements ProxmoxClientMethods 
     } catch (error) {
       this.logger.error('Connection test failed', { error });
       return false;
+    }
+  }
+
+  /**
+   * Initialize cluster detection
+   * This method checks if the node is part of a cluster and updates the configuration accordingly
+   */
+  private async initializeClusterDetection(): Promise<void> {
+    try {
+      // Only auto-detect if the setting is enabled
+      if (!config.autoDetectCluster) {
+        this.logger.info('Cluster auto-detection is disabled. Using manual cluster mode setting.');
+        return;
+      }
+      
+      // Check if the node is part of a cluster
+      const { isCluster, clusterName } = await this.isNodeInCluster();
+      
+      if (isCluster) {
+        // If the node is part of a cluster, update the global config
+        this.logger.info(`Node is part of cluster: ${clusterName}. Enabling cluster mode.`);
+        
+        // Update the global config to enable cluster mode
+        // This will affect how IDs are generated for VMs and containers
+        config.clusterMode = true;
+        config.clusterName = clusterName;
+      } else {
+        this.logger.info('Node is not part of a cluster. Cluster mode will not be enabled.');
+        // Explicitly disable cluster mode when not in a cluster
+        config.clusterMode = false;
+      }
+    } catch (error) {
+      this.logger.error('Error initializing cluster detection', { error });
     }
   }
 }
