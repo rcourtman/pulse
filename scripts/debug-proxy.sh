@@ -12,9 +12,9 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Port configuration
-MOCK_PORT=7655
-PROXY_PORT=7656
-FRONTEND_PORT=3000
+MOCK_PORT=7656
+PROXY_PORT=7657
+FRONTEND_PORT=7654
 
 echo -e "${BLUE}"
 echo "╔════════════════════════════════════════════════════════════╗"

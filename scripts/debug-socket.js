@@ -22,8 +22,8 @@ const io = new SocketServer(server, {
 });
 
 // Configuration
-const PROXY_PORT = 7656;
-const BACKEND_PORT = 7655;
+const PROXY_PORT = 7657;
+const BACKEND_PORT = 7656;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 const LOG_FILE = './socket-debug.log';
 

@@ -29,14 +29,14 @@ try {
   
   // Backend ports
   try {
-    execSync('npx kill-port 7654 7655', { stdio: 'inherit' });
+    execSync('npx kill-port 7654 7656', { stdio: 'inherit' });
   } catch (error) {
     console.log('No processes using backend ports.');
   }
   
   // Frontend ports
   try {
-    execSync('npx kill-port 3000 9513', { stdio: 'inherit' });
+    execSync('npx kill-port 7654 9513', { stdio: 'inherit' });
   } catch (error) {
     console.log('No processes using frontend ports.');
   }

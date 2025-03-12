@@ -47,6 +47,19 @@ echo "🚀 Starting mock data server..."
 export NODE_ENV=development
 export USE_MOCK_DATA=true
 export MOCK_DATA_ENABLED=true
+
+# Load environment variables from .env if it exists
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  echo "Loading environment from .env"
+  set -a
+  source "$PROJECT_ROOT/.env"
+  set +a
+  # Override with mock data settings
+  export NODE_ENV=development
+  export USE_MOCK_DATA=true
+  export MOCK_DATA_ENABLED=true
+fi
+
 cd "$PROJECT_ROOT" && ts-node src/mock/run-server.ts > /tmp/pulse-mock-server.log 2>&1 &
 MOCK_SERVER_PID=$!
 echo "Mock server started with PID: $MOCK_SERVER_PID"
@@ -73,7 +86,7 @@ if ! ps -p $BACKEND_PID > /dev/null; then
 fi
 
 echo "🚀 Starting frontend server..."
-cd "$PROJECT_ROOT/frontend" && USE_MOCK_DATA=true MOCK_DATA_ENABLED=true npm run dev -- --host "0.0.0.0" --port 3000 > /tmp/pulse-frontend.log 2>&1 &
+cd "$PROJECT_ROOT/frontend" && USE_MOCK_DATA=true MOCK_DATA_ENABLED=true npm run dev -- --host "0.0.0.0" --port 7654 > /tmp/pulse-frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo "Frontend server started with PID: $FRONTEND_PID"
 
@@ -82,15 +95,15 @@ echo "⏳ Waiting for servers to start..."
 sleep 15
 
 # Verify services are running correctly
-if ! curl -s http://localhost:3000 > /dev/null; then
-  echo "❌ Error: Frontend server is not running on port 3000"
+if ! curl -s http://localhost:7654 > /dev/null; then
+  echo "❌ Error: Frontend server is not running on port 7654"
   cat /tmp/pulse-frontend.log
   exit 1
 fi
 
 # Check if mock data server is responding
-if ! curl -s http://localhost:7655/status > /dev/null; then
-  echo "❌ Error: Mock data server is not responding on port 7655"
+if ! curl -s http://localhost:7656/status > /dev/null; then
+  echo "❌ Error: Mock data server is not responding on port 7656"
   cat /tmp/pulse-mock-server.log
   exit 1
 fi
