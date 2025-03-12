@@ -14,13 +14,16 @@ export class WebSocketServer {
     this.io = new Server(httpServer, {
       cors: {
         origin: '*',
-        methods: ['GET', 'POST']
+        methods: ['GET', 'POST'],
+        credentials: true,
+        allowedHeaders: ['*']
       },
       transports: ['websocket', 'polling'],
       pingTimeout: 15000,         // Reduced from 20000
       pingInterval: 2000,         // Reduced from 5000 to match more frequent node polling interval
       connectTimeout: 8000,       // Reduced from 10000
       allowUpgrades: true,
+      path: '/socket.io',         // Explicitly set the socket.io path
       perMessageDeflate: {
         threshold: 512            // Reduced from 1024 to compress smaller messages
       },
@@ -43,7 +46,13 @@ export class WebSocketServer {
       pingTimeout: 15000,
       pingInterval: 2000,
       connectTimeout: 8000,
-      cors: { origin: '*', methods: ['GET', 'POST'] }
+      path: '/socket.io',
+      cors: { 
+        origin: '*', 
+        methods: ['GET', 'POST'],
+        credentials: true,
+        allowedHeaders: ['*']
+      }
     });
   }
 
@@ -61,7 +70,8 @@ export class WebSocketServer {
           headers: socket.handshake.headers,
           query: socket.handshake.query,
           url: socket.handshake.url
-        }
+        },
+        transport: socket.conn.transport.name
       });
       
       // Send initial data
@@ -116,6 +126,11 @@ export class WebSocketServer {
     // Log any errors
     this.io.engine.on('connection_error', (err) => {
       this.logger.error('WebSocket connection error:', err);
+    });
+    
+    // Log transport changes
+    this.io.engine.on('upgrade', (transport) => {
+      this.logger.info(`WebSocket transport upgraded to: ${transport}`);
     });
   }
 
