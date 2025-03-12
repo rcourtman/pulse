@@ -10,6 +10,93 @@ import {
 import { formatPercentage } from '../../utils/formatters';
 import { pulseAnimation } from '../../constants/networkConstants';
 
+// Animated Logo component
+export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        width: size,
+        height: size,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 2,
+      }}
+    >
+      {/* Background circle */}
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(58, 123, 213, 0.8), rgba(58, 123, 213, 0.7))',
+          filter: darkMode ? 'brightness(1.2)' : 'none',
+        }}
+      />
+      
+      {/* Outer ring */}
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '95%',
+          height: '95%',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1))',
+        }}
+      />
+      
+      {/* Pulse ring (animated) */}
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '70%',
+          height: '70%',
+          borderRadius: '50%',
+          border: '2px solid rgba(255, 255, 255, 0.7)',
+          zIndex: 1
+        }}
+      />
+      
+      {/* Center dot */}
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '30%',
+          height: '30%',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #ffffff, #f0f0f0)',
+          boxShadow: '0 0 5px rgba(0, 0, 0, 0.1)',
+        }}
+      />
+    </Box>
+  );
+});
+
+// Animated Logo with Text component
+export const AnimatedLogoWithText = React.memo(({ size = 32, darkMode = false }) => {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <AnimatedLogo size={size} darkMode={darkMode} />
+      <Typography 
+        variant="h6" 
+        component="div" 
+        sx={{ 
+          fontWeight: 'bold',
+          color: darkMode ? 'white' : 'inherit',
+          letterSpacing: '0.5px',
+          textShadow: darkMode 
+            ? '0 2px 4px rgba(0, 0, 0, 0.5), 0 0 2px rgba(0, 0, 0, 0.3)' 
+            : '0 2px 4px rgba(0, 0, 0, 0.3), 0 0 2px rgba(0, 0, 0, 0.2)'
+        }}
+      >
+        Pulse
+      </Typography>
+    </Box>
+  );
+});
+
 // Progress bar with label and tooltip
 export const ProgressWithLabel = React.memo(({ value, color = "primary", disabled = false, tooltipText }) => {
   // Ensure value is a number and between 0-100
@@ -98,7 +185,7 @@ export const StatusIndicator = React.memo(({ status }) => {
           ? `0 0 0 1px ${alpha(color, 0.5)}` 
           : '0 0 0 1px rgba(255, 255, 255, 0.8)',
         ...(status.toLowerCase() === 'running' && {
-          animation: `${pulseAnimation} 2s infinite`
+          // No animation for running status
         })
       }}
     />

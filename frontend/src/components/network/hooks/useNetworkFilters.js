@@ -160,6 +160,12 @@ const useNetworkFilters = () => {
     setGuestTypeFilter('all');
   }, []);
 
+  // Function to clear only search terms
+  const clearSearchTerms = useCallback(() => {
+    setActiveSearchTerms([]);
+    setSearchTerm('');
+  }, []);
+
   // Count active filters
   const activeFilterCount = activeSearchTerms.length + 
     (searchTerm && !activeSearchTerms.includes(searchTerm) ? 1 : 0) + 
@@ -186,6 +192,7 @@ const useNetworkFilters = () => {
     handleSliderDragEnd,
     clearFilter,
     resetFilters,
+    clearSearchTerms,
     activeFilterCount
   };
 };

@@ -37,6 +37,33 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     nodeData
   } = useSocket();
   
+  // Debug logging
+  console.log('NetworkDisplay - selectedNode:', selectedNode);
+  console.log('NetworkDisplay - guestData:', guestData?.length || 0, 'guests');
+  console.log('NetworkDisplay - nodeData:', nodeData?.length || 0, 'nodes');
+  
+  // Add useEffect to log detailed data for debugging
+  React.useEffect(() => {
+    if (guestData && guestData.length > 0) {
+      console.log('Guest data sample:', guestData[0]);
+      console.log('All guests:', guestData);
+    } else {
+      console.warn('No guest data available');
+    }
+    
+    if (nodeData && nodeData.length > 0) {
+      console.log('Node data sample:', nodeData[0]);
+    } else {
+      console.warn('No node data available');
+    }
+    
+    if (metricsData && metricsData.length > 0) {
+      console.log('Metrics data sample:', metricsData[0]);
+    } else {
+      console.warn('No metrics data available');
+    }
+  }, [guestData, nodeData, metricsData]);
+  
   // Use the formatted metrics hook
   const formattedMetrics = useFormattedMetrics(metricsData);
   
@@ -118,6 +145,7 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     handleSliderDragEnd,
     clearFilter,
     resetFilters,
+    clearSearchTerms,
     activeFilterCount
   } = useNetworkFilters();
   
@@ -247,6 +275,7 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
         addSearchTerm={addSearchTerm}
         removeSearchTerm={removeSearchTerm}
         searchInputRef={searchInputRef}
+        clearSearchTerms={clearSearchTerms}
         
         // Type popover props
         typeAnchorEl={typeAnchorEl}

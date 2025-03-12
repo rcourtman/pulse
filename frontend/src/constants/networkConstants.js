@@ -3,13 +3,16 @@ import { keyframes } from '@mui/material';
 // Define pulse animation
 export const pulseAnimation = keyframes`
   0% {
-    box-shadow: 0 0 0 0 rgba(58, 123, 213, 0.4);
+    box-shadow: 0 0 0 0 rgba(58, 123, 213, 0.6);
+    transform: scale(0.95);
   }
   70% {
-    box-shadow: 0 0 0 6px rgba(58, 123, 213, 0);
+    box-shadow: 0 0 0 10px rgba(58, 123, 213, 0);
+    transform: scale(1.05);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(58, 123, 213, 0);
+    transform: scale(0.95);
   }
 `;
 

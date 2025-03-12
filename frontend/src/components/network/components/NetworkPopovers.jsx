@@ -36,6 +36,7 @@ const NetworkPopovers = ({
   addSearchTerm,
   removeSearchTerm,
   searchInputRef,
+  clearSearchTerms,
   
   // Type popover props
   typeAnchorEl,
@@ -167,8 +168,7 @@ const NetworkPopovers = ({
               <Button 
                 size="small" 
                 onClick={() => {
-                  setActiveSearchTerms([]);
-                  setSearchTerm('');
+                  clearSearchTerms();
                   handleCloseSearchPopover();
                 }}
               >

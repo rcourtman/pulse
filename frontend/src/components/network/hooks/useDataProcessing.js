@@ -30,13 +30,21 @@ const useDataProcessing = ({
   
   // Get sorted and filtered data
   const sortedAndFilteredData = useMemo(() => {
+    // Debug logging
+    console.log('useDataProcessing - Processing data:');
+    console.log('- guestData:', guestData?.length || 0, 'guests');
+    console.log('- selectedNode:', selectedNode);
+    console.log('- combinedMetrics:', combinedMetrics ? 'available' : 'not available');
+    
     // First filter by node
     const nodeFilteredData = selectedNode === 'all' 
       ? guestData 
-      : getNodeFilteredGuests(guestData);
+      : getNodeFilteredGuests(guestData, selectedNode);
+    
+    console.log('- nodeFilteredData:', nodeFilteredData?.length || 0, 'guests after node filtering');
     
     // Then apply all other filters and sorting
-    return getSortedAndFilteredData(
+    const result = getSortedAndFilteredData(
       nodeFilteredData,
       sortConfig,
       filters,
@@ -47,6 +55,9 @@ const useDataProcessing = ({
       guestTypeFilter,
       nodeData
     );
+    
+    console.log('- Final filtered data:', result?.length || 0, 'guests');
+    return result;
   }, [
     guestData, 
     combinedMetrics, 

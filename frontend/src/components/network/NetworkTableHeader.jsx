@@ -12,7 +12,8 @@ import {
   Badge,
   Divider,
   Typography,
-  Button
+  Button,
+  useTheme
 } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -36,6 +37,8 @@ const NetworkTableHeader = ({
   setColumnOrder,
   activeFilteredColumns = {}
 }) => {
+  const theme = useTheme();
+
   // Helper function to get sort direction
   const getSortDirection = (key) => {
     if (!sortConfig) return 'asc';
@@ -233,7 +236,11 @@ const NetworkTableHeader = ({
                 sx={{ 
                   width: columnWidths[column.id] || 'auto',
                   minWidth: getMinWidthForColumn(column.id),
-                  backgroundColor: activeFilteredColumns[column.id] ? '#e3f2fd' : 'background.paper',
+                  backgroundColor: activeFilteredColumns[column.id] 
+                    ? theme.palette.mode === 'dark' 
+                      ? 'rgba(64, 150, 255, 0.1)' 
+                      : 'rgba(25, 118, 210, 0.08)'
+                    : 'background.paper',
                   ...(column.id === 'status' && {
                     textAlign: 'center',
                     padding: '0px 8px'

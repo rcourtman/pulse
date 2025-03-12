@@ -39,26 +39,69 @@ export const getMetricsForGuest = (guestId, metricsData) => {
 
 // Function to filter guests based on selected node
 export const getNodeFilteredGuests = (guests, selectedNode) => {
+  if (!guests || !Array.isArray(guests)) {
+    console.warn('getNodeFilteredGuests: guests is not an array', guests);
+    return [];
+  }
+  
   if (selectedNode === 'all') {
     return guests;
   }
   
+  console.log('Filtering guests for node:', selectedNode);
+  
   // Filter guests based on the node property from the API
-  return guests.filter(guest => {
+  const filteredGuests = guests.filter(guest => {
     // Extract the node ID from the guest's node property
-    // The node property from the API is in the format "node-1", "node-2", etc.
-    // The selectedNode from the dropdown is in the format "node1", "node2", etc.
-    // We need to convert between these formats
     const nodeIdFromApi = guest.node;
     
     // If the node property doesn't exist, include the guest in all nodes
-    if (!nodeIdFromApi) return true;
+    if (!nodeIdFromApi) {
+      console.log('Guest has no node property:', guest.id, guest.name);
+      return true;
+    }
     
-    // Convert "node-1" to "node1" format
+    // Convert node IDs between formats
+    // The API might return "node-1" or just "node-1"
+    // The selectedNode from the dropdown is in the format "node1", "node2", etc.
+    
+    // First, try direct match
+    if (nodeIdFromApi === selectedNode) {
+      return true;
+    }
+    
+    // Try converting "node-1" to "node1" format
     const normalizedNodeId = nodeIdFromApi.replace('-', '');
+    if (normalizedNodeId === selectedNode) {
+      return true;
+    }
     
-    return normalizedNodeId === selectedNode;
+    // Try extracting just the number part for comparison
+    const nodeNumber = nodeIdFromApi.match(/\d+$/)?.[0];
+    const selectedNodeNumber = selectedNode.match(/\d+$/)?.[0];
+    
+    if (nodeNumber && selectedNodeNumber && nodeNumber === selectedNodeNumber) {
+      return true;
+    }
+    
+    // Try matching by prefix (e.g., "pve" in "pve-1" matches "pve1")
+    const nodePrefix = nodeIdFromApi.match(/^([a-zA-Z]+)/)?.[1];
+    const selectedPrefix = selectedNode.match(/^([a-zA-Z]+)/)?.[1];
+    
+    if (nodePrefix && selectedPrefix && nodePrefix === selectedPrefix) {
+      const nodeNum = nodeIdFromApi.match(/\d+$/)?.[0];
+      const selectedNum = selectedNode.match(/\d+$/)?.[0];
+      
+      if (nodeNum && selectedNum && nodeNum === selectedNum) {
+        return true;
+      }
+    }
+    
+    return false;
   });
+  
+  console.log('Filtered guests:', filteredGuests.length, 'of', guests.length);
+  return filteredGuests;
 };
 
 // Function to sort and filter data

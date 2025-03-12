@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { clearAppData } from '../utils/storageUtils';
 
 /**
  * Custom hook to manage WebSocket connections with Socket.io
@@ -11,21 +12,23 @@ const useSocket = (url) => {
   // In production, we can use window.location.origin since both frontend and backend are served from the same origin
   const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
   
-  // Get the current host and protocol
+  // Get the current host
   const currentHost = window.location.hostname;
-  const currentPort = window.location.port;
-  const currentProtocol = window.location.protocol;
   
   // For development, we need to explicitly connect to the backend server
   // For production, we use the same origin that served the page
-  // This ensures we connect to the same host that served the page, which works in both host and bridge network modes
-  const socketUrl = url || (isDevelopment 
-    ? `http://${currentHost}:7654` 
-    : window.location.origin);
-  
-  // For debugging - log the connection URL and environment
-  console.log('Environment:', isDevelopment ? 'development' : 'production');
-  console.log('Connecting to WebSocket server at:', socketUrl);
+  let socketUrl;
+  if (isDevelopment) {
+    // Check if we're using mock data
+    const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
+                        localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
+    
+    // Connect to mock server (7656) if using mock data, otherwise connect to backend server (7654)
+    socketUrl = `http://${currentHost}:${useMockData ? '7656' : '7654'}`;
+  } else {
+    // In production, use the same origin that served the page
+    socketUrl = window.location.origin;
+  }
   
   const [isConnected, setIsConnected] = useState(false);
   const [lastMessage, setLastMessage] = useState(null);
@@ -33,8 +36,7 @@ const useSocket = (url) => {
   const [guestData, setGuestData] = useState([]);
   const [metricsData, setMetricsData] = useState([]);
   const [error, setError] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connecting', 'connected', 'disconnected', 'error'
-  const [pingResult, setPingResult] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState('connecting');
   
   // Use ref to maintain socket instance across renders
   const socketRef = useRef(null);
@@ -55,17 +57,17 @@ const useSocket = (url) => {
       pingIntervalRef.current = null;
     }
     
-    console.log('Creating new socket connection to:', socketUrl);
-    
     // Create a new socket connection
     const newSocket = io(socketUrl, {
-      transports: ['websocket', 'polling'], // Add polling as fallback
-      reconnectionAttempts: 5,
+      transports: ['polling', 'websocket'], // Try polling first, then websocket
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000,
-      forceNew: true, // Force a new connection
-      autoConnect: true // Automatically connect
+      timeout: 30000,
+      forceNew: true,
+      autoConnect: true,
+      path: '/socket.io', // Explicitly set the socket.io path
+      withCredentials: false // Disable credentials for cross-origin requests
     });
     
     // Store the socket in the ref
@@ -73,33 +75,22 @@ const useSocket = (url) => {
     
     // Set up event listeners
     newSocket.on('connect', () => {
-      console.log('WebSocket connected successfully');
       setConnectionStatus('connected');
       setIsConnected(true);
       setError(null);
       
-      // Start ping interval to keep connection alive and test latency
+      // Start ping interval to keep connection alive
       pingIntervalRef.current = setInterval(() => {
         if (newSocket.connected) {
-          const startTime = Date.now();
-          newSocket.emit('ping', (response) => {
-            const latency = Date.now() - startTime;
-            setPingResult({ latency, timestamp: response.timestamp });
-            console.log(`WebSocket ping: ${latency}ms`);
-          });
+          newSocket.emit('ping');
         }
-      }, 10000); // Ping every 10 seconds
+      }, 30000); // Ping every 30 seconds
     });
     
     // Handle page visibility changes
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // Page is hidden, prepare for potential disconnect
-      } else {
-        // Page is visible again, ensure connection
-        if (!newSocket.connected) {
-          reconnect();
-        }
+      if (document.visibilityState === 'visible' && !newSocket.connected) {
+        reconnect();
       }
     };
     
@@ -116,14 +107,19 @@ const useSocket = (url) => {
     
     // Handle connection errors
     newSocket.on('connect_error', (err) => {
-      console.error('WebSocket connection error:', err.message);
       setConnectionStatus('error');
       setIsConnected(false);
       setError(`Connection error: ${err.message}`);
+      
+      // Attempt to reconnect after a delay
+      setTimeout(() => {
+        if (newSocket) {
+          newSocket.connect();
+        }
+      }, 3000);
     });
     
     newSocket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
       setIsConnected(false);
       setConnectionStatus('disconnected');
     });
@@ -134,7 +130,6 @@ const useSocket = (url) => {
       
       switch (message.type) {
         case 'CONNECTED':
-          console.log('Received CONNECTED message from server');
           break;
         
         case 'NODE_STATUS_UPDATE':
@@ -217,6 +212,16 @@ const useSocket = (url) => {
         }
       });
       
+      // Store the current environment with the guest data
+      try {
+        localStorage.setItem('guest_data_cache', JSON.stringify({
+          environment: process.env.NODE_ENV || 'development',
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('Error storing guest data cache info:', error);
+      }
+      
       return updatedGuests;
     });
   }, []);
@@ -225,9 +230,6 @@ const useSocket = (url) => {
   const handleMetricsUpdate = useCallback((payload) => {
     // Handle both single metric and array of metrics
     const metricData = Array.isArray(payload) ? payload : [payload];
-    
-    if (metricData.length > 0) {
-    }
     
     // Use functional update to avoid closure issues with stale state
     setMetricsData(prevMetrics => {
@@ -288,7 +290,6 @@ const useSocket = (url) => {
   // Function to manually attempt reconnection
   const reconnect = useCallback(() => {
     if (socketRef.current) {
-      console.log('Attempting to reconnect WebSocket...');
       setConnectionStatus('connecting');
       socketRef.current.connect();
     }
