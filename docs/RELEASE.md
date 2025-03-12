@@ -21,6 +21,13 @@ Ensure version numbers match in ALL these files:
 - `frontend/package.json`
 - `docker/Dockerfile` (LABEL version)
 
+### CHANGELOG Generation
+
+- Review ALL commits since the last release tag to create a comprehensive changelog
+- Use `git log <last-tag>..HEAD --oneline` to see commits since the last release
+- Ensure all significant changes, features, and fixes are documented
+- Organize changes by type (Added, Changed, Fixed, etc.)
+
 ### Git Requirements
 
 - Create and push a version tag (format: vX.Y.Z)
@@ -51,3 +58,11 @@ Rebuild Docker images if labels are incorrect.
 ### Docker Build Problems
 
 For multi-architecture builds, ensure buildx is configured properly and Docker daemon is running.
+
+### Command Pager Issues
+
+For commands that invoke a pager (git log, docker logs, etc.), append `| cat` to avoid interactive pager issues:
+```
+git log | cat
+docker logs container_name | cat
+```
