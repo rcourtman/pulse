@@ -1,18 +1,50 @@
 import { keyframes } from '@mui/material';
 
-// Define pulse animation
+// Define pulse animation for background
 export const pulseAnimation = keyframes`
   0% {
-    box-shadow: 0 0 0 0 rgba(58, 123, 213, 0.6);
-    transform: scale(0.95);
+    transform: scale(1);
+    opacity: 0.9;
   }
-  70% {
-    box-shadow: 0 0 0 10px rgba(58, 123, 213, 0);
-    transform: scale(1.05);
+  50% {
+    transform: scale(1.02);
+    opacity: 1;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(58, 123, 213, 0);
-    transform: scale(0.95);
+    transform: scale(1);
+    opacity: 0.9;
+  }
+`;
+
+// Define logo pulse animation - more subtle and elegant for the logo
+export const logoPulseAnimation = keyframes`
+  0% {
+    opacity: 0.8;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+    box-shadow: 0 0 6px 1px rgba(255, 255, 255, 0.3);
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+  }
+`;
+
+// Define center dot glow animation
+export const centerGlowAnimation = keyframes`
+  0% {
+    box-shadow: 0 0 4px 0px rgba(255, 255, 255, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 4px 0px rgba(255, 255, 255, 0.5);
   }
 `;
 
@@ -41,7 +73,7 @@ export const STORAGE_KEY_GUEST_TYPE_FILTER = 'network_display_guest_type_filter'
 
 // Define default column configuration
 export const DEFAULT_COLUMN_CONFIG = {
-  status: { id: 'status', label: '', visible: true },
+  status: { id: 'status', label: 'Status', visible: true },
   node: { id: 'node', label: 'Node', visible: true },
   type: { id: 'type', label: 'Type', visible: true },
   id: { id: 'id', label: 'ID', visible: true },

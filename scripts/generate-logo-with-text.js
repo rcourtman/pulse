@@ -53,8 +53,8 @@ function drawLogoWithText(ctx, width, height) {
   ctx.fill();
   
   // Pulse ring (static representation)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.lineWidth = logoSize * 0.05;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.lineWidth = logoSize * 0.06;
   ctx.beginPath();
   ctx.arc(logoX + center, logoY + center, radius * 0.7, 0, Math.PI * 2);
   ctx.stroke();
@@ -69,20 +69,15 @@ function drawLogoWithText(ctx, width, height) {
   centerGradient.addColorStop(0, '#ffffff');
   centerGradient.addColorStop(1, '#f0f0f0');
   
-  ctx.fillStyle = centerGradient;
-  ctx.beginPath();
-  ctx.arc(logoX + center, logoY + center, radius * 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Add subtle shadow to center dot
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-  ctx.shadowBlur = logoSize * 0.05;
+  // Add glow to center dot
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+  ctx.shadowBlur = logoSize * 0.1;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
   
   ctx.fillStyle = centerGradient;
   ctx.beginPath();
-  ctx.arc(logoX + center, logoY + center, radius * 0.28, 0, Math.PI * 2);
+  ctx.arc(logoX + center, logoY + center, radius * 0.3, 0, Math.PI * 2);
   ctx.fill();
   
   // Reset shadow

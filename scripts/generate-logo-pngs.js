@@ -37,8 +37,8 @@ function drawLogo(ctx, size) {
   ctx.fill();
   
   // Pulse ring (static representation)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.lineWidth = size * 0.05;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.lineWidth = size * 0.06;
   ctx.beginPath();
   ctx.arc(center, center, radius * 0.7, 0, Math.PI * 2);
   ctx.stroke();
@@ -53,20 +53,15 @@ function drawLogo(ctx, size) {
   centerGradient.addColorStop(0, '#ffffff');
   centerGradient.addColorStop(1, '#f0f0f0');
   
-  ctx.fillStyle = centerGradient;
-  ctx.beginPath();
-  ctx.arc(center, center, radius * 0.3, 0, Math.PI * 2);
-  ctx.fill();
-  
-  // Add subtle shadow to center dot
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-  ctx.shadowBlur = size * 0.05;
+  // Add glow to center dot
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+  ctx.shadowBlur = size * 0.1;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
   
   ctx.fillStyle = centerGradient;
   ctx.beginPath();
-  ctx.arc(center, center, radius * 0.28, 0, Math.PI * 2);
+  ctx.arc(center, center, radius * 0.3, 0, Math.PI * 2);
   ctx.fill();
   
   // Reset shadow

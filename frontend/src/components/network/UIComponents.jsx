@@ -8,7 +8,7 @@ import {
   useTheme
 } from '@mui/material';
 import { formatPercentage } from '../../utils/formatters';
-import { pulseAnimation } from '../../constants/networkConstants';
+import { pulseAnimation, logoPulseAnimation, centerGlowAnimation } from '../../constants/networkConstants';
 
 // Animated Logo component
 export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
@@ -24,7 +24,7 @@ export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
         marginRight: 2,
       }}
     >
-      {/* Background circle */}
+      {/* Background circle with subtle pulse */}
       <Box
         sx={{
           position: 'absolute',
@@ -33,6 +33,8 @@ export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
           borderRadius: '50%',
           background: 'linear-gradient(135deg, rgba(58, 123, 213, 0.8), rgba(58, 123, 213, 0.7))',
           filter: darkMode ? 'brightness(1.2)' : 'none',
+          animation: `${pulseAnimation} 4s infinite ease-in-out`,
+          animationDelay: '0.5s',
         }}
       />
       
@@ -55,7 +57,8 @@ export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
           height: '70%',
           borderRadius: '50%',
           border: '2px solid rgba(255, 255, 255, 0.7)',
-          zIndex: 1
+          zIndex: 1,
+          animation: `${logoPulseAnimation} 2.5s infinite ease-in-out`,
         }}
       />
       
@@ -67,7 +70,9 @@ export const AnimatedLogo = React.memo(({ size = 32, darkMode = false }) => {
           height: '30%',
           borderRadius: '50%',
           background: 'linear-gradient(135deg, #ffffff, #f0f0f0)',
-          boxShadow: '0 0 5px rgba(0, 0, 0, 0.1)',
+          animation: `${centerGlowAnimation} 3s infinite ease-in-out`,
+          animationDelay: '0.2s',
+          zIndex: 2,
         }}
       />
     </Box>
