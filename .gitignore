@@ -52,3 +52,6 @@ docs/RELEASE_PROCESS.md
 VERSION_UPDATE_CHECKLIST.md
 
 docker-compose.dev.yml
+
+# Issue responses directory
+.draft-notes/
