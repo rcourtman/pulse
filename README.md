@@ -6,19 +6,14 @@ A lightweight, responsive monitoring application for Proxmox VE that displays re
 
 ## ⚡ Quick Installation
 
+> **Prerequisites**: Node.js v20.0.0 or higher is required!
+
 ```bash
-# Clone the repository and enter directory
-git clone https://github.com/rcourtman/pulse.git && cd pulse
-
-# Install dependencies
-npm install
-cd frontend && npm install && cd ..
-
-# Start the development server with mock data
-./scripts/start-dev.sh
+# All-in-one command to clone repo, install dependencies, and start development server
+git clone https://github.com/rcourtman/pulse.git && cd pulse && npm install && cd frontend && npm install && cd .. && ./scripts/start-dev.sh
 ```
 
-> **Note:** The above commands will install dependencies and start Pulse in development mode with mock data. For real Proxmox data, you'll need a Proxmox API token. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
+> **Note:** The above command will install all dependencies and start Pulse in development mode with mock data. For real Proxmox data, you'll need a Proxmox API token. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/rcourtman)
 
@@ -49,9 +44,12 @@ cd frontend && npm install && cd ..
 
 The easiest way to get started with Pulse is using the development scripts:
 
-1. **Install dependencies**:
+1. **Install dependencies** (requires Node.js v20.0.0+):
    ```bash
+   # Install main project dependencies
    npm install
+   
+   # Install frontend dependencies
    cd frontend && npm install && cd ..
    ```
 
