@@ -4,13 +4,13 @@ A lightweight, responsive monitoring application for Proxmox VE that displays re
 
 ![Pulse Dashboard for Proxmox VE](docs/images/dashboard.png)
 
-## ⚡ One-Line Installation
+## ⚡ Quick Installation
 
 ```bash
-git clone https://github.com/rcourtman/pulse.git && cd pulse && npm run install:pulse
+git clone https://github.com/rcourtman/pulse.git && cd pulse && ./scripts/start-dev.sh
 ```
 
-> **Note:** You'll need a Proxmox API token to connect to your Proxmox server. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
+> **Note:** The above command will start Pulse in development mode with mock data. For real Proxmox data, you'll need a Proxmox API token. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/rcourtman)
 
@@ -37,19 +37,31 @@ git clone https://github.com/rcourtman/pulse.git && cd pulse && npm run install:
 
 ## 🚀 Quick Start
 
-### Using Docker (Recommended)
+### Development Mode (Quickest Way to Start)
 
-The easiest way to get started with Pulse is using Docker:
+The easiest way to get started with Pulse is using the development scripts:
 
-1. Run the installation script:
-   ```bash
-   npm run install:pulse
-   ```
-   This will check your system requirements and guide you through the setup process.
+On Linux/macOS:
+```bash
+./scripts/start-dev.sh
+```
 
-2. Create a Proxmox API token (if you don't have one already):
+On Windows:
+```bash
+scripts\start-dev.bat
+```
+
+This will start Pulse in development mode with mock data so you don't need a real Proxmox server.
+
+### Production Mode with Real Proxmox Data
+
+1. Create a Proxmox API token:
    - See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below
    - You'll need this token to connect to your Proxmox server
+
+2. Configure your environment:
+   - Copy the example environment file: `cp .env.example .env`
+   - Edit this file to add your Proxmox server details and API token
 
 3. Start the application:
    ```bash
@@ -59,67 +71,6 @@ The easiest way to get started with Pulse is using Docker:
 4. Access the dashboard at http://localhost:7654
 
 **New users:** Check out our [Getting Started Guide](GETTING-STARTED.md) for a step-by-step walkthrough.
-
-### Using the Launcher
-
-Alternatively, you can use the launcher script:
-
-```bash
-# On Unix/Linux/macOS
-./start.sh
-
-# On Windows
-start.bat
-```
-
-This will present a menu where you can choose which environment to start:
-1. Development (with real Proxmox data)
-2. Development (with mock data)
-3. Production
-4. Docker Development
-5. Docker Production
-
-### Option 1: Simple Docker Run
-
-```bash
-# 1. Download the example environment file
-curl -O https://raw.githubusercontent.com/rcourtman/pulse/main/.env.example
-mv .env.example .env
-
-# 2. Edit the .env file with your Proxmox details
-nano .env  # or use your preferred editor
-
-# 3. Run with Docker
-docker run -d \
-  -p 7654:7654 \
-  --env-file .env \
-  --name pulse \
-  --restart unless-stopped \
-  rcourtman/pulse:latest
-
-# 4. Access the application
-# Open http://localhost:7654 in your browser
-# If running on a remote server, use http://server-ip:7654
-```
-
-### Option 2: Docker Compose
-
-```bash
-# 1. Download the example files
-curl -O https://raw.githubusercontent.com/rcourtman/pulse/main/.env.example
-curl -O https://raw.githubusercontent.com/rcourtman/pulse/main/docker-compose.yml
-mv .env.example .env
-
-# 2. Edit the .env file with your Proxmox details
-nano .env  # or use your preferred editor
-
-# 3. Run with Docker Compose
-docker compose up -d  # Note: newer Docker versions use 'docker compose' (no hyphen)
-
-# 4. Access the application
-# Open http://localhost:7654 in your browser
-# If running on a remote server, use http://server-ip:7654
-```
 
 ## 📂 Project Organization
 
@@ -260,8 +211,13 @@ These permissions allow Pulse to read metrics and status information without mak
 ## 🛠️ Common Commands
 
 ```bash
-# Development mode with mock data (local)
-# This automatically starts both the mock server and development server
+# Development mode with mock data (quickest way to start)
+# On Linux/macOS
+./scripts/start-dev.sh
+# On Windows
+scripts\start-dev.bat
+
+# Development mode with mock data (using npm)
 npm run dev
 
 # Production mode with real Proxmox data (local)
@@ -273,16 +229,7 @@ npm run dev:docker
 # Production mode with real Proxmox data (Docker)
 npm run prod:docker
 
-# View logs
-npm run logs
-
-# Check container status
-npm run status
-
-# Restart the application
-npm run restart
-
-# Stop the application
+# Stop Docker containers
 npm run stop
 
 # Clean up (remove containers, images, volumes)
