@@ -25,34 +25,20 @@ if (!fs.existsSync(envFilePath)) {
   process.exit(1);
 }
 
-// Check if Proxmox configuration is valid
-// We'll check for the default configuration or additional nodes
-const defaultVars = [
-  'PROXMOX_HOST',
-  'PROXMOX_NODE',
-  'PROXMOX_TOKEN_ID',
-  'PROXMOX_TOKEN_SECRET'
-];
-
-// Check if we have the default configuration
-const hasDefaultConfig = defaultVars.every(varName => 
-  process.env[varName] && process.env[varName] !== 'your-token-secret-here' && process.env[varName] !== 'your-token-secret'
-);
-
-// Check for additional nodes (with numeric suffix)
-let hasAdditionalNodes = false;
-for (let i = 2; i <= 10; i++) {
-  const hostKey = `PROXMOX_HOST_${i}`;
-  const nodeNameKey = `PROXMOX_NODE_${i}`;
-  const tokenIdKey = `PROXMOX_TOKEN_ID_${i}`;
-  const tokenSecretKey = `PROXMOX_TOKEN_SECRET_${i}`;
+// Check for nodes using the original format (PROXMOX_NODE_X_NAME, etc.)
+let hasValidConfig = false;
+for (let i = 1; i <= 10; i++) {
+  const hostKey = `PROXMOX_NODE_${i}_HOST`;
+  const nodeNameKey = `PROXMOX_NODE_${i}_NAME`;
+  const tokenIdKey = `PROXMOX_NODE_${i}_TOKEN_ID`;
+  const tokenSecretKey = `PROXMOX_NODE_${i}_TOKEN_SECRET`;
   
   const hasNodeConfig = [hostKey, nodeNameKey, tokenIdKey, tokenSecretKey].every(key => 
     process.env[key] && process.env[key] !== 'your-token-secret-here' && process.env[key] !== 'your-token-secret'
   );
   
   if (hasNodeConfig) {
-    hasAdditionalNodes = true;
+    hasValidConfig = true;
     break;
   }
 }
@@ -60,13 +46,14 @@ for (let i = 2; i <= 10; i++) {
 // If mock data is enabled, we don't need Proxmox configuration
 const mockDataEnabled = process.env.USE_MOCK_DATA === 'true' || process.env.MOCK_DATA_ENABLED === 'true';
 
-if (!hasDefaultConfig && !hasAdditionalNodes && !mockDataEnabled) {
+if (!hasValidConfig && !mockDataEnabled) {
   console.error('\x1b[31mError: Missing or invalid Proxmox configuration.\x1b[0m');
   console.log('You need to configure at least one Proxmox node:');
-  console.log('\nDefault node configuration:');
-  defaultVars.forEach(varName => {
-    console.log(`  - ${varName}`);
-  });
+  console.log('\nNode configuration format:');
+  console.log('  - PROXMOX_NODE_1_NAME   (e.g. "pve")');
+  console.log('  - PROXMOX_NODE_1_HOST   (e.g. "https://proxmox.local:8006")');
+  console.log('  - PROXMOX_NODE_1_TOKEN_ID    (e.g. "root@pam!pulse")');
+  console.log('  - PROXMOX_NODE_1_TOKEN_SECRET  (your API token)');
   
   console.log('\nYou have two options:');
   console.log('1. Update your .env file with valid Proxmox details');
@@ -100,10 +87,8 @@ if (!hasDefaultConfig && !hasAdditionalNodes && !mockDataEnabled) {
   });
 } else {
   // Configuration is valid
-  if (hasDefaultConfig) {
-    console.log('\x1b[32mDefault Proxmox configuration is valid. Continuing with production mode.\x1b[0m');
-  } else if (hasAdditionalNodes) {
-    console.log('\x1b[32mAdditional Proxmox node configuration is valid. Continuing with production mode.\x1b[0m');
+  if (hasValidConfig) {
+    console.log('\x1b[32mProxmox configuration is valid. Continuing with production mode.\x1b[0m');
   } else if (mockDataEnabled) {
     console.log('\x1b[32mMock data is enabled. No Proxmox configuration needed. Continuing with production mode.\x1b[0m');
   }

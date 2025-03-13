@@ -86,29 +86,29 @@ async function testNode(host, tokenId, tokenSecret, nodeName) {
 async function testAllNodes() {
   // Node 1
   await testNode(
-    process.env.PROXMOX_HOST,
-    process.env.PROXMOX_TOKEN_ID,
-    process.env.PROXMOX_TOKEN_SECRET,
-    process.env.PROXMOX_NODE
+    process.env.PROXMOX_NODE_1_HOST,
+    process.env.PROXMOX_NODE_1_TOKEN_ID,
+    process.env.PROXMOX_NODE_1_TOKEN_SECRET,
+    process.env.PROXMOX_NODE_1_NAME
   );
   
   // Node 2
-  if (process.env.PROXMOX_HOST_2) {
+  if (process.env.PROXMOX_NODE_2_HOST) {
     await testNode(
-      process.env.PROXMOX_HOST_2,
-      process.env.PROXMOX_TOKEN_ID_2,
-      process.env.PROXMOX_TOKEN_SECRET_2,
-      process.env.PROXMOX_NODE_2
+      process.env.PROXMOX_NODE_2_HOST,
+      process.env.PROXMOX_NODE_2_TOKEN_ID,
+      process.env.PROXMOX_NODE_2_TOKEN_SECRET,
+      process.env.PROXMOX_NODE_2_NAME
     );
   }
   
   // Node 3
-  if (process.env.PROXMOX_HOST_3) {
+  if (process.env.PROXMOX_NODE_3_HOST) {
     await testNode(
-      process.env.PROXMOX_HOST_3,
-      process.env.PROXMOX_TOKEN_ID_3,
-      process.env.PROXMOX_TOKEN_SECRET_3,
-      process.env.PROXMOX_NODE_3
+      process.env.PROXMOX_NODE_3_HOST,
+      process.env.PROXMOX_NODE_3_TOKEN_ID,
+      process.env.PROXMOX_NODE_3_TOKEN_SECRET,
+      process.env.PROXMOX_NODE_3_NAME
     );
   }
 }
