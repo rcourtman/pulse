@@ -3,6 +3,9 @@
 # Make script executable if it isn't already
 chmod +x "$0"
 
+# Get the absolute path of the project root directory
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # Stop any running Pulse Docker containers first
 echo "Stopping any running Pulse Docker containers..."
 docker ps -q --filter "name=pulse" | xargs -r docker stop
@@ -19,10 +22,10 @@ export MOCK_DATA_ENABLED=true
 export MOCK_SERVER_PORT=7656
 
 # Load environment variables from .env if it exists
-if [ -f ../../.env ]; then
+if [ -f "${PROJECT_ROOT}/.env" ]; then
   echo "Loading environment from .env"
   set -a
-  source ../../.env
+  source "${PROJECT_ROOT}/.env"
   set +a
   # Override with mock data settings
   export NODE_ENV=development
@@ -31,35 +34,19 @@ if [ -f ../../.env ]; then
   export MOCK_SERVER_PORT=7656
 fi
 
-# Start the backend server with mock data
-echo "Starting backend server with mock data on port 7656..."
-cd ../../ && PORT=7656 npm run dev:server &
-BACKEND_PID=$!
+# Start the development environment with mock data
+echo "Starting development environment with mock data..."
+cd "${PROJECT_ROOT}" && npm run dev &
+DEV_PID=$!
 
-# Wait a moment for the server to start
-sleep 3
-
-# Get the host IP (use 0.0.0.0 in Docker, otherwise use localhost or your local IP)
-HOST_IP="0.0.0.0"
-if [[ -z "${DOCKER_CONTAINER}" ]]; then
-  # Not in Docker, still use 0.0.0.0 to bind to all interfaces
-  HOST_IP="0.0.0.0"
-fi
-
-# Start the frontend Vite dev server
-echo "Starting Pulse interface with mock data on port 7654..."
-cd ../../frontend && npm run dev -- --host "${HOST_IP}" --port 7654 &
-FRONTEND_PID=$!
-
-# Wait for the frontend to be ready
-echo "Waiting for the frontend to be ready..."
+# Wait for the development environment to be ready
+echo "Waiting for the development environment to be ready..."
 sleep 10
 
-# Run the screenshot tool
+# Run the screenshot tool directly from its directory
 echo "Running screenshot tool..."
-cd ../tools/screenshot-automation && npm run build && npm start
+cd "${PROJECT_ROOT}/tools/screenshot-automation" && npm run build && npm start
 
-# When the screenshot tool exits, also kill the servers
+# When the screenshot tool exits, also kill the development server
 echo "Cleaning up servers..."
-kill $FRONTEND_PID
-kill $BACKEND_PID 
+kill $DEV_PID 

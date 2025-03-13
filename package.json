@@ -10,6 +10,7 @@
     "build": "tsc",
     "dev": "node scripts/configure-env.js dev && NODE_ENV=development node scripts/start.js dev",
     "dev:docker": "[ -f .env ] || cp .env.example .env && node scripts/configure-env.js dev && docker compose up --build",
+    "dev:screenshots": "rm -rf docs/images/* && concurrently --kill-others-on-fail \"npm run dev\" \"sleep 10 && cd tools/screenshot-automation && npm run build && npm start\"",
     "prod": "node scripts/configure-env.js prod && node scripts/check-config.js && node scripts/start.js prod",
     "prod:docker": "[ -f .env ] || cp .env.example .env && node scripts/configure-env.js prod && node scripts/check-config.js && docker compose up --build",
     "stop": "docker compose stop",

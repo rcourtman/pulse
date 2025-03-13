@@ -1,5 +1,5 @@
 {
-  "baseUrl": "http://localhost:7654",
+  "baseUrl": "http://localhost:3000",
   "outputDir": "../../docs/images",
   "mockData": {
     "enabled": true,
@@ -15,25 +15,7 @@
         "height": 900
       },
       "waitForSelector": "#root",
-      "createSplitView": true,
-      "splitViewConfig": {
-        "type": "vertical",
-        "addLabels": false,
-        "addIcons": false
-      },
-      "beforeScreenshot": "const nodeMenuButton = document.querySelector('button.MuiIconButton-root[aria-label=\"More options\"], button.MuiIconButton-root[aria-label=\"Menu\"], button.MuiIconButton-root[aria-haspopup=\"true\"]'); if (nodeMenuButton) { nodeMenuButton.click(); }",
-      "cleanupIndividualScreenshots": true
-    },
-    {
-      "path": "/resources",
-      "name": "filters",
-      "viewportSize": {
-        "width": 1440,
-        "height": 900
-      },
-      "waitForSelector": "#root",
-      "lightModeOnly": true,
-      "beforeScreenshot": "// Find all buttons on the page\nconst allButtons = Array.from(document.querySelectorAll('button'));\n\n// Look for buttons with filter-related text or icons\nconst filterButtons = allButtons.filter(btn => \n  btn.textContent.toLowerCase().includes('filter') || \n  btn.innerHTML.toLowerCase().includes('filter') ||\n  btn.querySelector('svg')\n);\n\n// Click the first potential filter button\nif (filterButtons.length > 0) {\n  console.log('Found button that might be the filter button');\n  filterButtons[0].click();\n  // Wait for the filter panel to appear\n  await new Promise(resolve => setTimeout(resolve, 3000));\n} else {\n  console.log('No filter button found');\n}"
+      "lightModeOnly": true
     }
   ]
 } 

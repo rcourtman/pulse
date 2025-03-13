@@ -90,8 +90,12 @@ class ScreenshotTool {
     
     const page = await this.browser.newPage();
     
-    // Set viewport size
-    await page.setViewport(viewportSize);
+    // Set viewport size with deviceScaleFactor of 2 for Retina-quality screenshots
+    await page.setViewport({
+      width: viewportSize.width,
+      height: viewportSize.height,
+      deviceScaleFactor: 2  // This is key for high-quality screenshots on Retina displays
+    });
     
     // Setup mock data if configured
     if (this.config.mockData?.enabled) {
@@ -294,13 +298,15 @@ class ScreenshotTool {
           y: cropRegion.y,
           width: cropRegion.width,
           height: cropRegion.height
-        }
+        },
+        omitBackground: false
       });
     } else {
       // Take a full page screenshot
       await page.screenshot({
         path: outputPath,
-        fullPage: false
+        fullPage: false,
+        omitBackground: false
       });
     }
     
