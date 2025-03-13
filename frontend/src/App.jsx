@@ -199,7 +199,7 @@ function AppContent() {
       <Container 
         maxWidth="lg" 
         sx={{ 
-          mt: { xs: 2, sm: 4 }, 
+          mt: { xs: 1, sm: 2 }, 
           mb: { xs: 2, sm: 4 }, 
           flexGrow: 1,
           px: { xs: 2, sm: 3 },
@@ -210,7 +210,7 @@ function AppContent() {
           }
         }}
       >
-        <Box sx={{ my: { xs: 2, sm: 4 } }}>
+        <Box sx={{ my: { xs: 1, sm: 2 } }}>
           {/* Network Display Component - pass the selected node as a prop */}
           <NetworkDisplay selectedNode={selectedNode} />
         </Box>
