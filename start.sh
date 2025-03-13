@@ -148,8 +148,10 @@ while true; do
         # macOS requires an empty string with sed
         # Set development environment
         sed -i '' 's/NODE_ENV=production/NODE_ENV=development/' .env
-        # Use the development Dockerfile (without adding .dev extension)
-        sed -i '' 's|DOCKERFILE=docker/Dockerfile|DOCKERFILE=docker/Dockerfile.dev|' .env
+        # First ensure there are no duplicated .dev extensions
+        sed -i '' 's|DOCKERFILE=docker/Dockerfile.dev.dev|DOCKERFILE=docker/Dockerfile.dev|' .env
+        # Use the development Dockerfile (only if not already set to .dev)
+        sed -i '' 's|DOCKERFILE=docker/Dockerfile$|DOCKERFILE=docker/Dockerfile.dev|' .env
         # Enable mock data for Docker development
         sed -i '' 's/USE_MOCK_DATA=false/USE_MOCK_DATA=true/' .env
         sed -i '' 's/MOCK_DATA_ENABLED=false/MOCK_DATA_ENABLED=true/' .env
@@ -165,8 +167,10 @@ while true; do
         # Linux version
         # Set development environment
         sed -i 's/NODE_ENV=production/NODE_ENV=development/' .env
-        # Use the development Dockerfile (without adding .dev extension)
-        sed -i 's|DOCKERFILE=docker/Dockerfile|DOCKERFILE=docker/Dockerfile.dev|' .env
+        # First ensure there are no duplicated .dev extensions
+        sed -i 's|DOCKERFILE=docker/Dockerfile.dev.dev|DOCKERFILE=docker/Dockerfile.dev|' .env
+        # Use the development Dockerfile (only if not already set to .dev)
+        sed -i 's|DOCKERFILE=docker/Dockerfile$|DOCKERFILE=docker/Dockerfile.dev|' .env
         # Enable mock data for Docker development
         sed -i 's/USE_MOCK_DATA=false/USE_MOCK_DATA=true/' .env
         sed -i 's/MOCK_DATA_ENABLED=false/MOCK_DATA_ENABLED=true/' .env
