@@ -363,6 +363,49 @@ export const getSortedAndFilteredData = (
           : bId.localeCompare(aId);
       }
       
+      // Special case for status column (running status should be first)
+      if (sortConfig.key === 'status') {
+        // Normalize status values for consistent sorting
+        const statusPriority = {
+          'running': 1,
+          'paused': 2,
+          'suspended': 3,
+          'stopped': 4
+        };
+        
+        const aStatus = (a.status || '').toLowerCase();
+        const bStatus = (b.status || '').toLowerCase();
+        
+        // Get priority or default to highest number (end of sort)
+        const aPriority = statusPriority[aStatus] || 999;
+        const bPriority = statusPriority[bStatus] || 999;
+        
+        // Sort by priority number
+        if (sortConfig.direction === 'asc') {
+          return aPriority - bPriority;
+        } else {
+          return bPriority - aPriority;
+        }
+      }
+      
+      // Special case for type column (normalize qemu/lxc to vm/ct)
+      if (sortConfig.key === 'type') {
+        // Normalize type values
+        const getTypeValue = (type) => {
+          const typeStr = (type || '').toLowerCase();
+          if (typeStr === 'qemu') return 'vm';
+          if (typeStr === 'lxc') return 'ct';
+          return typeStr;
+        };
+        
+        const aType = getTypeValue(a.type);
+        const bType = getTypeValue(b.type);
+        
+        return sortConfig.direction === 'asc'
+          ? aType.localeCompare(bType)
+          : bType.localeCompare(aType);
+      }
+      
       // Default string comparison for other fields
       const aValue = a[sortConfig.key] || '';
       const bValue = b[sortConfig.key] || '';
