@@ -135,9 +135,9 @@ function AppContent() {
             <AnimatedLogoWithText darkMode={darkMode} />
             
             {/* Version display with link to repository */}
-            <Tooltip title="View on GitHub">
+            <Tooltip title="View Releases">
               <Link 
-                href="https://github.com/rcourtman/pulse" 
+                href={`https://github.com/rcourtman/pulse/releases/tag/v${VERSION}`}
                 target="_blank" 
                 rel="noopener noreferrer"
                 sx={{ 
@@ -168,7 +168,7 @@ function AppContent() {
                     '&:hover': {
                       opacity: 1
                     }
-                  }} 
+                  }}
                 />
               </Link>
             </Tooltip>
