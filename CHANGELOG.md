@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [1.6.2] - 2024-03-13
+
+### Added
+- Improved application launcher UI with a more user-friendly menu
+
+### Fixed
+- Reduced spacing between header and content for better layout
+- Fixed search highlighting to only highlight relevant columns with prefix searches
+- Improved screenshot quality and automation workflow
+- Updated Docker Compose environment variables to match .env.example format
+
 ## [1.6.1] - 2024-03-12
 
 ### Fixed
