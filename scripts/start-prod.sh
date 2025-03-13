@@ -65,6 +65,54 @@ else
   echo "[DRY RUN] Would run: node dist/server.js"
 fi
 
+# If we're using mock data, start the mock server
+if [ "$USE_MOCK_DATA" = "true" ] || [ "$MOCK_DATA_ENABLED" = "true" ]; then
+  echo "Starting mock data server on port 7656..."
+  
+  if [ "$DRY_RUN" = false ]; then
+    # If running in Docker, we need to bind to 0.0.0.0 instead of localhost
+    if [ -n "$DOCKER_CONTAINER" ]; then
+      # Create a modified version of the run-server.ts file that binds to 0.0.0.0
+      echo "global.HOST = '0.0.0.0';" > /tmp/mock-server-config.js
+      # Start the mock server with the modified config
+      NODE_OPTIONS="--require /tmp/mock-server-config.js" MOCK_SERVER_PORT=7656 node dist/mock/run-server.js > /tmp/pulse-mock-server.log 2>&1 &
+    else
+      # Start the mock server normally
+      MOCK_SERVER_PORT=7656 node dist/mock/run-server.js > /tmp/pulse-mock-server.log 2>&1 &
+    fi
+    
+    MOCK_SERVER_PID=$!
+    
+    # Wait a moment for the mock server to start
+    sleep 5
+    
+    # Verify mock server is running
+    if [ -n "$DOCKER_CONTAINER" ]; then
+      # In Docker, check 0.0.0.0 or the HOST_IP environment variable
+      # Use -I to get headers only and check if we got ANY HTTP response (200 or 404 both mean the server is running)
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://0.0.0.0:7656)
+      if [[ "$HTTP_CODE" == "404" || "$HTTP_CODE" == "200" ]]; then
+        echo "✅ Mock server is running on port 7656 (HTTP code: $HTTP_CODE)"
+      else
+        echo "❌ Mock server failed to start (HTTP code: $HTTP_CODE)"
+        cat /tmp/pulse-mock-server.log
+      fi
+    else
+      # Not in Docker, check localhost
+      # Use -I to get headers only and check if we got ANY HTTP response (200 or 404 both mean the server is running)
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7656)
+      if [[ "$HTTP_CODE" == "404" || "$HTTP_CODE" == "200" ]]; then
+        echo "✅ Mock server is running on port 7656 (HTTP code: $HTTP_CODE)"
+      else
+        echo "❌ Mock server failed to start (HTTP code: $HTTP_CODE)"
+        cat /tmp/pulse-mock-server.log
+      fi
+    fi
+  else
+    echo "[DRY RUN] Would start mock data server"
+  fi
+fi
+
 # When the server exits, also kill the mock server if it's running
 if [ -n "$MOCK_SERVER_PID" ]; then
   kill $MOCK_SERVER_PID

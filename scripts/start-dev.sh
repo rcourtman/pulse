@@ -50,9 +50,14 @@ if [ -f .env ]; then
   set +a
 fi
 
-# Override with development settings
-export USE_MOCK_DATA=true
-export MOCK_DATA_ENABLED=true
+# Only set mock data if it's not already set in the environment
+# This allows the caller to override it
+if [ -z "$USE_MOCK_DATA" ]; then
+  export USE_MOCK_DATA=true
+fi
+if [ -z "$MOCK_DATA_ENABLED" ]; then
+  export MOCK_DATA_ENABLED=true
+fi
 export MOCK_SERVER_PORT=7656
 
 # Check if we should use mock data
@@ -77,14 +82,29 @@ if [ "$USE_MOCK_DATA" = "true" ] || [ "$MOCK_DATA_ENABLED" = "true" ]; then
     MOCK_SERVER_PID=$!
     
     # Wait a moment for the mock server to start
-    sleep 2
+    sleep 5
     
     # Verify mock server is running
-    if curl -s http://localhost:7656 > /dev/null; then
-      echo "✅ Mock server is running on port 7656"
+    if [ -n "$DOCKER_CONTAINER" ]; then
+      # In Docker, check 0.0.0.0 or the HOST_IP environment variable
+      # Use -I to get headers only and check if we got ANY HTTP response (200 or 404 both mean the server is running)
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://0.0.0.0:7656)
+      if [[ "$HTTP_CODE" == "404" || "$HTTP_CODE" == "200" ]]; then
+        echo "✅ Mock server is running on port 7656 (HTTP code: $HTTP_CODE)"
+      else
+        echo "❌ Mock server failed to start (HTTP code: $HTTP_CODE)"
+        cat /tmp/pulse-mock-server.log
+      fi
     else
-      echo "❌ Mock server failed to start"
-      cat /tmp/pulse-mock-server.log
+      # Not in Docker, check localhost
+      # Use -I to get headers only and check if we got ANY HTTP response (200 or 404 both mean the server is running)
+      HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:7656)
+      if [[ "$HTTP_CODE" == "404" || "$HTTP_CODE" == "200" ]]; then
+        echo "✅ Mock server is running on port 7656 (HTTP code: $HTTP_CODE)"
+      else
+        echo "❌ Mock server failed to start (HTTP code: $HTTP_CODE)"
+        cat /tmp/pulse-mock-server.log
+      fi
     fi
   else
     echo "[DRY RUN] Would start mock data server"
@@ -122,7 +142,11 @@ fi
 echo ""
 echo "Pulse is now running in development mode!"
 echo "- Backend API: http://localhost:7654"
-echo "- Mock Server: http://localhost:7656"
+if [ "$USE_MOCK_DATA" = "true" ] || [ "$MOCK_DATA_ENABLED" = "true" ]; then
+  echo "- Mock Server: http://localhost:7656"
+else
+  echo "- Using real Proxmox data"
+fi
 echo "- Frontend UI: http://localhost:3000 (use this for development)"
 echo ""
 echo "Access the application at: http://localhost:3000"

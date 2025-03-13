@@ -42,13 +42,25 @@ echo Starting mock data server on port 7656...
 start /b cmd /c "npx ts-node src/mock/run-server.ts"
 
 REM Wait a moment for the mock server to start
-timeout /t 3 /nobreak > nul
+timeout /t 5 /nobreak > nul
 
 REM Verify mock server is running
-call :check_server_running 7656 "Mock server"
-if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Mock server failed to start on port 7656
-    exit /b 1
+if "%DOCKER_CONTAINER%"=="" (
+  :: Not in Docker, check localhost
+  for /f "tokens=*" %%a in ('powershell -Command "(Invoke-WebRequest -Uri http://localhost:7656 -UseBasicParsing -ErrorAction SilentlyContinue).StatusCode"') do set HTTP_CODE=%%a
+) else (
+  :: In Docker, check 0.0.0.0
+  for /f "tokens=*" %%a in ('powershell -Command "(Invoke-WebRequest -Uri http://0.0.0.0:7656 -UseBasicParsing -ErrorAction SilentlyContinue).StatusCode"') do set HTTP_CODE=%%a
+)
+
+:: Check if we got a valid HTTP response (200 or 404 both mean the server is running)
+if "%HTTP_CODE%"=="200" (
+  echo ✅ Mock server is running on port 7656 (HTTP code: %HTTP_CODE%)
+) else if "%HTTP_CODE%"=="404" (
+  echo ✅ Mock server is running on port 7656 (HTTP code: %HTTP_CODE%)
+) else (
+  echo ❌ Mock server failed to start
+  type %TEMP%\pulse-mock-server.log
 )
 
 REM Start the backend server on port 7654

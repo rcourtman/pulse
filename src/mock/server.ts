@@ -39,6 +39,11 @@ const HOST = (global as any).HOST || process.env.MOCK_SERVER_HOST || '0.0.0.0';
 // Log the configuration
 logger.info(`Mock server configured to use host: ${HOST}, port: ${PORT}`);
 
+// Add a health check endpoint at the root path
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Mock server is running' });
+});
+
 // Generate a random number between min and max
 const randomBetween = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1) + min);
 
