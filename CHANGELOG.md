@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.6.3] - 2024-03-13
+
+### Security
+- Fixed high severity vulnerability (GHSA-v2mw-5mch-w8c5) by removing unused jspdf and jspdf-autotable packages
+- Updated Babel dependencies to fix moderate severity vulnerability (GHSA-968p-4wvh-cqc8)
+
 ## [1.6.2] - 2024-03-13
 
 ### Added
