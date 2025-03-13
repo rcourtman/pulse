@@ -28,7 +28,30 @@ const useActiveFilteredColumns = ({
       allTerms.forEach(term => {
         const termLower = term.trim().toLowerCase();
         
-        // Check for exact type matches first
+        // Handle column-specific searches (using prefixes)
+        if (termLower.includes(':')) {
+          const [prefix, value] = termLower.split(':', 2);
+          
+          switch (prefix.trim()) {
+            case 'name':
+              result.name = true;
+              return; // Skip other checks for this term
+            case 'id':
+              result.id = true;
+              return; // Skip other checks for this term
+            case 'node':
+              result.node = true;
+              return; // Skip other checks for this term
+            case 'status':
+              result.status = true;
+              return; // Skip other checks for this term
+            case 'type':
+              result.type = true;
+              return; // Skip other checks for this term
+          }
+        }
+        
+        // Check for exact type matches
         if (termLower === 'ct' || termLower === 'container') {
           result.type = true;
           return; // Skip other checks for this term
