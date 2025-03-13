@@ -7,10 +7,18 @@ A lightweight, responsive monitoring application for Proxmox VE that displays re
 ## ⚡ Quick Installation
 
 ```bash
-git clone https://github.com/rcourtman/pulse.git && cd pulse && ./scripts/start-dev.sh
+# Clone the repository and enter directory
+git clone https://github.com/rcourtman/pulse.git && cd pulse
+
+# Install dependencies
+npm install
+cd frontend && npm install && cd ..
+
+# Start the development server with mock data
+./scripts/start-dev.sh
 ```
 
-> **Note:** The above command will start Pulse in development mode with mock data. For real Proxmox data, you'll need a Proxmox API token. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
+> **Note:** The above commands will install dependencies and start Pulse in development mode with mock data. For real Proxmox data, you'll need a Proxmox API token. See the [Creating a Proxmox API Token](#creating-a-proxmox-api-token) section below.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/rcourtman)
 
@@ -41,15 +49,23 @@ git clone https://github.com/rcourtman/pulse.git && cd pulse && ./scripts/start-
 
 The easiest way to get started with Pulse is using the development scripts:
 
-On Linux/macOS:
-```bash
-./scripts/start-dev.sh
-```
+1. **Install dependencies**:
+   ```bash
+   npm install
+   cd frontend && npm install && cd ..
+   ```
 
-On Windows:
-```bash
-scripts\start-dev.bat
-```
+2. **Start the development server**:
+
+   On Linux/macOS:
+   ```bash
+   ./scripts/start-dev.sh
+   ```
+
+   On Windows:
+   ```bash
+   scripts\start-dev.bat
+   ```
 
 This will start Pulse in development mode with mock data so you don't need a real Proxmox server.
 
@@ -115,13 +131,17 @@ USE_MOCK_DATA=false  # set to 'true' to use mock data instead of real Proxmox da
 
 ### Quick Setup
 
-The easiest way to configure Pulse is to use the installation script:
+The easiest way to configure Pulse is to copy the example environment file and edit it:
 
 ```bash
-npm run install:pulse
+# Copy the example environment file
+cp .env.example .env
+
+# Edit the .env file with your favorite editor
+nano .env  # or use vim, VS Code, etc.
 ```
 
-This interactive script will guide you through the configuration process and create a `.env` file with the appropriate settings.
+Add your Proxmox node details to the `.env` file and save it. See the [Environment Configuration](#environment-configuration) section for details on the required settings.
 
 ### Manual Configuration
 
