@@ -10,7 +10,9 @@ import {
   Tooltip, 
   alpha,
   Button,
-  Link
+  Link,
+  Chip,
+  Alert
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -44,15 +46,29 @@ function AppContent() {
     };
   }, []);
   
+  // Make sure localStorage has the mock data flags set correctly
+  useEffect(() => {
+    // Set localStorage items to indicate mock data mode is enabled
+    localStorage.setItem('use_mock_data', 'true');
+    localStorage.setItem('MOCK_DATA_ENABLED', 'true');
+    console.log('Mock data mode enabled via localStorage');
+  }, []);
+  
   const { 
     nodeData, 
     guestData, 
-    isConnected
+    isConnected,
+    isMockData
   } = useSocket();
   const theme = useTheme();
   
   // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
+  const isDevelopment = import.meta.env.DEV;
+  
+  // Check if mock data is enabled - using both localStorage values and socket status
+  const isMockDataEnabled = isMockData || 
+                          localStorage.getItem('use_mock_data') === 'true' || 
+                          localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
   
   // Initialize storage and check for environment changes
   useEffect(() => {
@@ -83,6 +99,10 @@ function AppContent() {
       window.removeEventListener('nodeChange', handleNodeChangeEvent);
     };
   }, []);
+  
+  // We'll force DEMO MODE to be visible in development mode
+  // This ensures the indicator is always shown during development
+  const forceShowDemoMode = true;
   
   // If there's an error, show an error message
   if (hasError) {
@@ -129,6 +149,23 @@ function AppContent() {
         document.activeElement?.blur();
       }
     }}>
+      {/* DEMO MODE Banner - Always visible in development mode */}
+      {(isMockDataEnabled || forceShowDemoMode) && (
+        <Alert 
+          severity="warning" 
+          variant="standard"
+          sx={{ 
+            borderRadius: 0,
+            justifyContent: 'center', 
+            fontWeight: 'medium',
+            py: 0.5,
+            fontSize: '0.875rem'
+          }}
+        >
+          DEMO MODE - Viewing simulated data. To view real Proxmox data, disable mock data in your .env file.
+        </Alert>
+      )}
+      
       <AppBar position="static" color="primary" elevation={0}>
         <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
@@ -172,6 +209,26 @@ function AppContent() {
                 />
               </Link>
             </Tooltip>
+            
+            {/* DEMO MODE indicator - Always visible in development mode */}
+            {(isMockDataEnabled || forceShowDemoMode) && (
+              <Tooltip title="Pulse is running with simulated data. To connect to a real Proxmox server, set USE_MOCK_DATA=false and MOCK_DATA_ENABLED=false in your .env file">
+                <Chip
+                  label="DEMO MODE"
+                  color="warning"
+                  size="small"
+                  sx={{ 
+                    ml: 2,
+                    fontWeight: 'medium',
+                    fontSize: '0.85rem',
+                    border: '1px solid',
+                    borderColor: 'warning.light',
+                    color: 'white',
+                    animation: 'none'
+                  }}
+                />
+              </Tooltip>
+            )}
           </Box>
           
           {/* Dark Mode Toggle Button */}

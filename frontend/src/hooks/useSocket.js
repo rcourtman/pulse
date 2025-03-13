@@ -10,7 +10,7 @@ import { clearAppData } from '../utils/storageUtils';
 const useSocket = (url) => {
   // In development mode, we need to connect to the backend server on port 7654
   // In production, we can use window.location.origin since both frontend and backend are served from the same origin
-  const isDevelopment = process.env.NODE_ENV === 'development' || import.meta.env.DEV;
+  const isDevelopment = import.meta.env.DEV;
   
   // Get the current host
   const currentHost = window.location.hostname;
@@ -34,6 +34,9 @@ const useSocket = (url) => {
   const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
                       localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
   
+  // Store the mock data status as a state variable so it can be exposed in the return value
+  const [isMockData, setIsMockData] = useState(useMockData);
+
   const [isConnected, setIsConnected] = useState(useMockData ? true : false);
   const [lastMessage, setLastMessage] = useState(null);
   const [nodeData, setNodeData] = useState(useMockData ? [
@@ -113,6 +116,20 @@ const useSocket = (url) => {
         setConnectionStatus('connected');
         setError(null);
         reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
+        
+        // Request server configuration to check if mock data is enabled on the server
+        socketRef.current.emit('getServerConfig', (config) => {
+          if (config && (config.useMockData || config.mockDataEnabled)) {
+            console.log('Server is using mock data');
+            setIsMockData(true);
+            // Store this information in localStorage for persistence
+            localStorage.setItem('use_mock_data', 'true');
+            localStorage.setItem('MOCK_DATA_ENABLED', 'true');
+          } else {
+            console.log('Server is using real data');
+            setIsMockData(false);
+          }
+        });
         
         // Request initial data
         socketRef.current.emit('requestNodeData');
@@ -312,6 +329,19 @@ const useSocket = (url) => {
         }
       });
 
+      // Setup socket event listeners
+      socketRef.current.on('nodeData', (data) => {
+        if (Array.isArray(data)) {
+          // Check if this is mock data by looking for the 'MOCK-' prefix in node names
+          const isMockDataNodes = data.some(node => node.name && node.name.startsWith('MOCK-'));
+          if (isMockDataNodes) {
+            console.log('Detected mock data from node names');
+            setIsMockData(true);
+          }
+          setNodeData(data);
+        }
+      });
+
       // Cleanup function
       return () => {
         clearTimeout(connectionTimeout); // Clear the timeout on cleanup
@@ -437,7 +467,7 @@ const useSocket = (url) => {
       // Store the current environment with the guest data
       try {
         localStorage.setItem('guest_data_cache', JSON.stringify({
-          environment: process.env.NODE_ENV || 'development',
+          environment: import.meta.env.MODE || 'development',
           timestamp: Date.now()
         }));
       } catch (error) {
@@ -624,7 +654,8 @@ const useSocket = (url) => {
     reconnect,
     subscribeToNode,
     subscribeToGuest,
-    getHistory
+    getHistory,
+    isMockData
   };
 };
 
