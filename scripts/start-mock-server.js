@@ -1,58 +1,84 @@
-#!/usr/bin/env node
+const express = require('express');
+const cors = require('cors');
+const app = express();
 
-/**
- * Script to start just the mock server
- * Usage: node scripts/start-mock-server.js
- */
+// Enable CORS
+app.use(cors());
 
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const dotenv = require('dotenv');
-
-// Load environment variables
-dotenv.config();
-
-// Use port 7656 to avoid conflicts with the backend server
-const MOCK_PORT = 7656;
-
-console.log(`Starting mock server on port ${MOCK_PORT}...`);
-
-// Set environment variables
-process.env.NODE_ENV = 'development';
-process.env.USE_MOCK_DATA = 'true';
-process.env.MOCK_DATA_ENABLED = 'true';
-process.env.MOCK_SERVER_PORT = MOCK_PORT.toString();
-
-// Start the mock server
-const mockServer = spawn('npx', ['ts-node', 'src/mock/run-server.ts'], {
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    NODE_ENV: 'development',
-    USE_MOCK_DATA: 'true',
-    MOCK_DATA_ENABLED: 'true',
-    PORT: MOCK_PORT.toString(),
-    MOCK_SERVER_PORT: MOCK_PORT.toString()
-  }
+// Mock data endpoints
+app.get('/api/v1/cluster/status', (req, res) => {
+  res.json({
+    nodes: [
+      {
+        name: 'pve1',
+        status: 'online',
+        cpu: {
+          usage: 45.2,
+          cores: 4
+        },
+        memory: {
+          total: 16777216,
+          used: 8388608,
+          free: 8388608
+        }
+      },
+      {
+        name: 'pve2',
+        status: 'online',
+        cpu: {
+          usage: 32.8,
+          cores: 4
+        },
+        memory: {
+          total: 16777216,
+          used: 6291456,
+          free: 10485760
+        }
+      }
+    ]
+  });
 });
 
-// Handle mock server exit
-mockServer.on('exit', (code) => {
-  console.log(`Mock server exited with code ${code}`);
-  process.exit(code);
+app.get('/api/v1/cluster/resources', (req, res) => {
+  res.json({
+    vms: [
+      {
+        id: '100',
+        name: 'vm-100',
+        status: 'running',
+        node: 'pve1',
+        cpu: {
+          usage: 25.5,
+          cores: 2
+        },
+        memory: {
+          total: 4096,
+          used: 2048,
+          free: 2048
+        }
+      }
+    ],
+    containers: [
+      {
+        id: '101',
+        name: 'ct-101',
+        status: 'running',
+        node: 'pve2',
+        cpu: {
+          usage: 15.2,
+          cores: 1
+        },
+        memory: {
+          total: 2048,
+          used: 1024,
+          free: 1024
+        }
+      }
+    ]
+  });
 });
 
-// Handle process termination
-process.on('SIGINT', () => {
-  console.log('Stopping mock server...');
-  mockServer.kill();
-});
-
-process.on('SIGTERM', () => {
-  console.log('Stopping mock server...');
-  mockServer.kill();
-});
-
-console.log(`Mock server started on port ${MOCK_PORT}`);
-console.log('Press Ctrl+C to stop'); 
+const PORT = process.env.MOCK_SERVER_PORT || 7655;
+app.listen(PORT, () => {
+  console.log(`Mock server running on port ${PORT}`);
+}); 
