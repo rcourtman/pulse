@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { clearAppData } from '../utils/storageUtils';
 
+// Add this function for more dynamic mock data generation
+const generateDynamicMetric = (baseValue, min, max, changeRange) => {
+  // Random value between -changeRange and +changeRange
+  const change = (Math.random() * changeRange * 2) - changeRange;
+  return Math.max(min, Math.min(max, baseValue + change));
+};
+
 /**
  * Custom hook to manage WebSocket connections with Socket.io
  * @param {string} url - WebSocket server URL (defaults to current origin)
@@ -57,6 +64,9 @@ const useSocket = (url) => {
   const reconnectAttemptsRef = useRef(0);
   // Reduce reconnection attempts in development mode
   const MAX_RECONNECT_ATTEMPTS = isDevelopment ? 1 : 3;
+
+  // Also add a metrics update interval
+  const metricsIntervalRef = useRef(null);
 
   // Initialize socket connection
   useEffect(() => {
@@ -398,32 +408,129 @@ const useSocket = (url) => {
       
       // Generate mock metrics for each guest
       const mockMetrics = guestData.map(guest => {
+        // Generate more interesting initial values
+        const cpuUsage = 10 + Math.random() * 40; // 10-50% initial CPU
+        const memPercent = 20 + Math.random() * 40; // 20-60% initial memory
+        const diskPercent = 30 + Math.random() * 50; // 30-80% initial disk
+        
         return {
           guestId: guest.id,
           nodeId: guest.node,
           timestamp: Date.now(),
           metrics: {
-            cpu: Math.random() * 50, // Random CPU usage between 0-50%
+            cpu: cpuUsage,
             memory: {
-              total: 8 * 1024 * 1024 * 1024, // 8 GB
-              used: Math.random() * 4 * 1024 * 1024 * 1024, // 0-4 GB used
-              percentUsed: Math.random() * 50 // 0-50%
+              total: 16 * 1024 * 1024 * 1024, // 16 GB
+              used: (16 * 1024 * 1024 * 1024) * (memPercent / 100), // Memory used based on percentage
+              percentUsed: memPercent
             },
             disk: {
-              total: 100 * 1024 * 1024 * 1024, // 100 GB
-              used: Math.random() * 50 * 1024 * 1024 * 1024, // 0-50 GB used
-              percentUsed: Math.random() * 50 // 0-50%
+              total: 500 * 1024 * 1024 * 1024, // 500 GB
+              used: (500 * 1024 * 1024 * 1024) * (diskPercent / 100), // Disk used based on percentage
+              percentUsed: diskPercent
             },
             network: {
-              inRate: Math.random() * 10 * 1024 * 1024, // 0-10 MB/s
-              outRate: Math.random() * 5 * 1024 * 1024, // 0-5 MB/s
+              inRate: Math.random() * 20 * 1024 * 1024, // 0-20 MB/s
+              outRate: Math.random() * 10 * 1024 * 1024, // 0-10 MB/s
             }
           }
         };
       });
       
       setMetricsData(mockMetrics);
+      
+      // Set up an interval to update mock metrics more frequently with greater variation
+      if (metricsIntervalRef.current) {
+        clearInterval(metricsIntervalRef.current);
+      }
+      
+      metricsIntervalRef.current = setInterval(() => {
+        setMetricsData(prev => {
+          if (!prev || prev.length === 0) return prev;
+          
+          return prev.map(metric => {
+            // CPU: More dynamic changes with occasional spikes
+            let newCpu;
+            if (Math.random() < 0.1) {
+              // 10% chance of a significant spike
+              newCpu = Math.min(95, metric.metrics.cpu + 15 + Math.random() * 20);
+            } else if (Math.random() < 0.1) {
+              // 10% chance of a significant drop
+              newCpu = Math.max(5, metric.metrics.cpu - 15 - Math.random() * 10);
+            } else {
+              // Otherwise smaller changes
+              newCpu = generateDynamicMetric(metric.metrics.cpu, 5, 95, 8);
+            }
+            
+            // Memory: Gradual changes with relation to CPU
+            let memoryDelta = (Math.random() * 4) - 2; // -2 to +2 base change
+            if (newCpu > metric.metrics.cpu + 10) {
+              // If CPU spiked up, memory likely increases too
+              memoryDelta += 3;
+            } else if (newCpu < metric.metrics.cpu - 10) {
+              // If CPU dropped significantly, memory might decrease too
+              memoryDelta -= 1;
+            }
+            const newMemPercent = Math.max(10, Math.min(90, metric.metrics.memory.percentUsed + memoryDelta));
+            const newMemUsed = metric.metrics.memory.total * (newMemPercent / 100);
+            
+            // Disk: Slow growth with occasional cleanup
+            let diskDelta;
+            if (Math.random() < 0.05) {
+              // 5% chance of disk cleanup
+              diskDelta = -1 * (Math.random() * 3 + 1); // 1-4% reduction
+            } else {
+              // Disk typically grows slowly
+              diskDelta = Math.random() * 0.5; // 0-0.5% growth
+            }
+            const newDiskPercent = Math.max(20, Math.min(95, metric.metrics.disk.percentUsed + diskDelta));
+            const newDiskUsed = metric.metrics.disk.total * (newDiskPercent / 100);
+            
+            // Network: Bursty traffic patterns
+            let newInRate, newOutRate;
+            if (Math.random() < 0.2) {
+              // 20% chance of traffic burst
+              newInRate = Math.max(1024, metric.metrics.network.inRate + (Math.random() * 10 + 2) * 1024 * 1024);
+              newOutRate = Math.max(1024, metric.metrics.network.outRate + (Math.random() * 5 + 1) * 1024 * 1024);
+            } else {
+              // Normal variations
+              newInRate = Math.max(1024, metric.metrics.network.inRate + (Math.random() * 4 - 2) * 1024 * 1024);
+              newOutRate = Math.max(1024, metric.metrics.network.outRate + (Math.random() * 3 - 1.5) * 1024 * 1024);
+            }
+            
+            return {
+              ...metric,
+              timestamp: Date.now(),
+              metrics: {
+                ...metric.metrics,
+                cpu: newCpu,
+                memory: {
+                  ...metric.metrics.memory,
+                  used: newMemUsed,
+                  percentUsed: newMemPercent
+                },
+                disk: {
+                  ...metric.metrics.disk,
+                  used: newDiskUsed,
+                  percentUsed: newDiskPercent
+                },
+                network: {
+                  ...metric.metrics.network,
+                  inRate: newInRate,
+                  outRate: newOutRate
+                }
+              }
+            };
+          });
+        });
+      }, 2000); // Update every 2 seconds
     }
+    
+    return () => {
+      if (metricsIntervalRef.current) {
+        clearInterval(metricsIntervalRef.current);
+      }
+    };
   }, [useMockData, metricsData.length, guestData]);
 
   // Handler for node status updates
