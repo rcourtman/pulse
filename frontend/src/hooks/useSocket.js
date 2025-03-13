@@ -383,18 +383,29 @@ const useSocket = (url) => {
     if (useMockData && guestData.length === 0 && nodeData.length > 0) {
       console.log('Generating mock guest data');
       
-      // Generate some basic mock guest data
+      // Generate some basic mock guest data with more stopped guests
       const mockGuests = [
-        { id: '101', name: 'mock-db-master', type: 'vm', status: 'running', node: 'node-1' },
-        { id: '104', name: 'mock-web1', type: 'vm', status: 'running', node: 'node-1' },
-        { id: '121', name: 'mock-dev-db', type: 'vm', status: 'running', node: 'node-2' },
-        { id: '125', name: 'mock-dev-web1', type: 'vm', status: 'running', node: 'node-2' },
-        { id: '150', name: 'mock-win10-test', type: 'vm', status: 'running', node: 'node-3' },
-        { id: '203', name: 'mock-lb1', type: 'ct', status: 'running', node: 'node-1' },
-        { id: '220', name: 'mock-dev-tools', type: 'ct', status: 'running', node: 'node-2' },
-        { id: '240', name: 'mock-pihole-dns', type: 'ct', status: 'running', node: 'node-3' },
-        { id: '999', name: 'mock-shared-vm', type: 'vm', status: 'running', node: 'node-1' },
-        { id: '888', name: 'mock-shared-container', type: 'ct', status: 'running', node: 'node-1' }
+        { id: '101', name: 'mock-db-master', type: 'vm', status: 'running', node: 'node-1', uptime: 432000 }, // 5 days
+        { id: '104', name: 'mock-web1', type: 'vm', status: 'running', node: 'node-1', uptime: 345600 }, // 4 days
+        { id: '107', name: 'mock-web2', type: 'vm', status: 'stopped', node: 'node-1', uptime: 0 },
+        { id: '110', name: 'mock-redis', type: 'vm', status: 'running', node: 'node-1', uptime: 172800 }, // 2 days
+        { id: '121', name: 'mock-dev-db', type: 'vm', status: 'running', node: 'node-2', uptime: 86400 }, // 1 day
+        { id: '125', name: 'mock-dev-web1', type: 'vm', status: 'stopped', node: 'node-2', uptime: 0 },
+        { id: '126', name: 'mock-dev-web2', type: 'vm', status: 'paused', node: 'node-2', uptime: 0 },
+        { id: '130', name: 'mock-test-api', type: 'vm', status: 'stopped', node: 'node-2', uptime: 0 },
+        { id: '142', name: 'mock-jenkins', type: 'vm', status: 'running', node: 'node-2', uptime: 259200 }, // 3 days
+        { id: '150', name: 'mock-win10-test', type: 'vm', status: 'stopped', node: 'node-3', uptime: 0 },
+        { id: '151', name: 'mock-ubuntu22-template', type: 'vm', status: 'stopped', node: 'node-3', uptime: 0 },
+        { id: '155', name: 'mock-debian11-template', type: 'vm', status: 'running', node: 'node-3', uptime: 518400 }, // 6 days
+        { id: '203', name: 'mock-lb1', type: 'ct', status: 'running', node: 'node-1', uptime: 604800 }, // 7 days
+        { id: '204', name: 'mock-lb2', type: 'ct', status: 'stopped', node: 'node-1', uptime: 0 },
+        { id: '220', name: 'mock-dev-tools', type: 'ct', status: 'running', node: 'node-2', uptime: 691200 }, // 8 days
+        { id: '225', name: 'mock-staging-proxy', type: 'ct', status: 'stopped', node: 'node-2', uptime: 0 },
+        { id: '240', name: 'mock-pihole-dns', type: 'ct', status: 'running', node: 'node-3', uptime: 1209600 }, // 14 days
+        { id: '245', name: 'mock-home-automation', type: 'ct', status: 'running', node: 'node-3', uptime: 777600 }, // 9 days
+        { id: '250', name: 'mock-media-server', type: 'ct', status: 'stopped', node: 'node-3', uptime: 0 },
+        { id: '999', name: 'mock-shared-vm', type: 'vm', status: 'running', node: 'node-1', uptime: 259200 }, // 3 days
+        { id: '888', name: 'mock-shared-container', type: 'ct', status: 'running', node: 'node-1', uptime: 172800 } // 2 days
       ];
       
       setGuestData(mockGuests);
@@ -406,36 +417,39 @@ const useSocket = (url) => {
     if (useMockData && metricsData.length === 0 && guestData.length > 0) {
       console.log('Generating mock metrics data');
       
-      // Generate mock metrics for each guest
-      const mockMetrics = guestData.map(guest => {
-        // Generate more interesting initial values
-        const cpuUsage = 10 + Math.random() * 40; // 10-50% initial CPU
-        const memPercent = 20 + Math.random() * 40; // 20-60% initial memory
-        const diskPercent = 30 + Math.random() * 50; // 30-80% initial disk
-        
-        return {
-          guestId: guest.id,
-          nodeId: guest.node,
-          timestamp: Date.now(),
-          metrics: {
-            cpu: cpuUsage,
-            memory: {
-              total: 16 * 1024 * 1024 * 1024, // 16 GB
-              used: (16 * 1024 * 1024 * 1024) * (memPercent / 100), // Memory used based on percentage
-              percentUsed: memPercent
-            },
-            disk: {
-              total: 500 * 1024 * 1024 * 1024, // 500 GB
-              used: (500 * 1024 * 1024 * 1024) * (diskPercent / 100), // Disk used based on percentage
-              percentUsed: diskPercent
-            },
-            network: {
-              inRate: Math.random() * 20 * 1024 * 1024, // 0-20 MB/s
-              outRate: Math.random() * 10 * 1024 * 1024, // 0-10 MB/s
+      // Generate mock metrics for each guest - but only for running guests
+      const mockMetrics = guestData
+        .filter(guest => guest.status === 'running')  // Only generate metrics for running guests
+        .map(guest => {
+          // Generate more interesting initial values
+          const cpuUsage = 10 + Math.random() * 40; // 10-50% initial CPU
+          const memPercent = 20 + Math.random() * 40; // 20-60% initial memory
+          const diskPercent = 30 + Math.random() * 50; // 30-80% initial disk
+          
+          return {
+            guestId: guest.id,
+            nodeId: guest.node,
+            timestamp: Date.now(),
+            metrics: {
+              cpu: cpuUsage,
+              memory: {
+                total: 16 * 1024 * 1024 * 1024, // 16 GB
+                used: (16 * 1024 * 1024 * 1024) * (memPercent / 100), // Memory used based on percentage
+                percentUsed: memPercent
+              },
+              disk: {
+                total: 500 * 1024 * 1024 * 1024, // 500 GB
+                used: (500 * 1024 * 1024 * 1024) * (diskPercent / 100), // Disk used based on percentage
+                percentUsed: diskPercent
+              },
+              network: {
+                inRate: Math.random() * 20 * 1024 * 1024, // 0-20 MB/s
+                outRate: Math.random() * 10 * 1024 * 1024, // 0-10 MB/s
+              },
+              uptime: guest.uptime || 3600 * (1 + Math.floor(Math.random() * 72)) // Ensure uptime value exists
             }
-          }
-        };
-      });
+          };
+        });
       
       setMetricsData(mockMetrics);
       
@@ -445,83 +459,124 @@ const useSocket = (url) => {
       }
       
       metricsIntervalRef.current = setInterval(() => {
+        // Also occasionally change guest status
+        if (Math.random() < 0.05) { // 5% chance per interval
+          setGuestData(prevGuests => {
+            // Make a copy of the guests array
+            const updatedGuests = [...prevGuests];
+            
+            // Randomly select a guest to change status
+            const randomIndex = Math.floor(Math.random() * updatedGuests.length);
+            const guest = updatedGuests[randomIndex];
+            
+            // Determine new status - with probability favoring current state
+            let newStatus;
+            if (guest.status === 'running') {
+              // 10% chance a running guest stops
+              newStatus = Math.random() < 0.1 ? 'stopped' : 'running';
+            } else {
+              // 20% chance a stopped guest starts
+              newStatus = Math.random() < 0.2 ? 'running' : 'stopped';
+            }
+            
+            // Only update if status changed
+            if (newStatus !== guest.status) {
+              updatedGuests[randomIndex] = {
+                ...guest,
+                status: newStatus,
+                // Reset or set uptime accordingly
+                uptime: newStatus === 'running' ? 300 : 0 // New running guests start with 5 min uptime
+              };
+              
+              console.log(`Mock guest ${guest.name} (${guest.id}) changed status from ${guest.status} to ${newStatus}`);
+            }
+            
+            return updatedGuests;
+          });
+        }
+        
+        // Update uptime for running guests
+        setGuestData(prevGuests => {
+          const updatedGuests = prevGuests.map(guest => {
+            if (guest.status === 'running') {
+              // Increase uptime by the interval time (in seconds)
+              return {
+                ...guest,
+                uptime: (guest.uptime || 0) + 2 // Add 2 seconds per interval
+              };
+            }
+            return guest;
+          });
+          return updatedGuests;
+        });
+        
+        // Update metrics
         setMetricsData(prev => {
           if (!prev || prev.length === 0) return prev;
           
-          return prev.map(metric => {
-            // CPU: More dynamic changes with occasional spikes
-            let newCpu;
-            if (Math.random() < 0.1) {
-              // 10% chance of a significant spike
-              newCpu = Math.min(95, metric.metrics.cpu + 15 + Math.random() * 20);
-            } else if (Math.random() < 0.1) {
-              // 10% chance of a significant drop
-              newCpu = Math.max(5, metric.metrics.cpu - 15 - Math.random() * 10);
-            } else {
-              // Otherwise smaller changes
-              newCpu = generateDynamicMetric(metric.metrics.cpu, 5, 95, 8);
-            }
+          // Get current list of running guests
+          const runningGuestIds = guestData
+            .filter(g => g.status === 'running')
+            .map(g => g.id);
             
-            // Memory: Gradual changes with relation to CPU
-            let memoryDelta = (Math.random() * 4) - 2; // -2 to +2 base change
-            if (newCpu > metric.metrics.cpu + 10) {
-              // If CPU spiked up, memory likely increases too
-              memoryDelta += 3;
-            } else if (newCpu < metric.metrics.cpu - 10) {
-              // If CPU dropped significantly, memory might decrease too
-              memoryDelta -= 1;
-            }
-            const newMemPercent = Math.max(10, Math.min(90, metric.metrics.memory.percentUsed + memoryDelta));
-            const newMemUsed = metric.metrics.memory.total * (newMemPercent / 100);
+          // Update existing metrics
+          const updatedMetrics = prev
+            .filter(metric => runningGuestIds.includes(metric.guestId)) // Keep only metrics for running guests
+            .map(metric => {
+              // ... existing metric update code ...
+              
+              // Get the corresponding guest to update uptime
+              const guest = guestData.find(g => g.id === metric.guestId);
+              
+              return {
+                ...metric,
+                timestamp: Date.now(),
+                metrics: {
+                  ...metric.metrics,
+                  // ... existing metric updates ...
+                  uptime: guest?.uptime || metric.metrics.uptime + 2 // Ensure uptime is synchronized
+                }
+              };
+            });
             
-            // Disk: Slow growth with occasional cleanup
-            let diskDelta;
-            if (Math.random() < 0.05) {
-              // 5% chance of disk cleanup
-              diskDelta = -1 * (Math.random() * 3 + 1); // 1-4% reduction
-            } else {
-              // Disk typically grows slowly
-              diskDelta = Math.random() * 0.5; // 0-0.5% growth
-            }
-            const newDiskPercent = Math.max(20, Math.min(95, metric.metrics.disk.percentUsed + diskDelta));
-            const newDiskUsed = metric.metrics.disk.total * (newDiskPercent / 100);
+          // Add metrics for newly running guests
+          const existingMetricGuestIds = updatedMetrics.map(m => m.guestId);
+          const newRunningGuests = guestData.filter(g => 
+            g.status === 'running' && !existingMetricGuestIds.includes(g.id)
+          );
+          
+          // Generate metrics for new running guests
+          newRunningGuests.forEach(guest => {
+            const cpuUsage = 10 + Math.random() * 20; // 10-30% initial CPU
+            const memPercent = 20 + Math.random() * 30; // 20-50% initial memory
+            const diskPercent = 30 + Math.random() * 40; // 30-70% initial disk
             
-            // Network: Bursty traffic patterns
-            let newInRate, newOutRate;
-            if (Math.random() < 0.2) {
-              // 20% chance of traffic burst
-              newInRate = Math.max(1024, metric.metrics.network.inRate + (Math.random() * 10 + 2) * 1024 * 1024);
-              newOutRate = Math.max(1024, metric.metrics.network.outRate + (Math.random() * 5 + 1) * 1024 * 1024);
-            } else {
-              // Normal variations
-              newInRate = Math.max(1024, metric.metrics.network.inRate + (Math.random() * 4 - 2) * 1024 * 1024);
-              newOutRate = Math.max(1024, metric.metrics.network.outRate + (Math.random() * 3 - 1.5) * 1024 * 1024);
-            }
-            
-            return {
-              ...metric,
+            updatedMetrics.push({
+              guestId: guest.id,
+              nodeId: guest.node,
               timestamp: Date.now(),
               metrics: {
-                ...metric.metrics,
-                cpu: newCpu,
+                cpu: cpuUsage,
                 memory: {
-                  ...metric.metrics.memory,
-                  used: newMemUsed,
-                  percentUsed: newMemPercent
+                  total: 16 * 1024 * 1024 * 1024, // 16 GB
+                  used: (16 * 1024 * 1024 * 1024) * (memPercent / 100),
+                  percentUsed: memPercent
                 },
                 disk: {
-                  ...metric.metrics.disk,
-                  used: newDiskUsed,
-                  percentUsed: newDiskPercent
+                  total: 500 * 1024 * 1024 * 1024, // 500 GB
+                  used: (500 * 1024 * 1024 * 1024) * (diskPercent / 100),
+                  percentUsed: diskPercent
                 },
                 network: {
-                  ...metric.metrics.network,
-                  inRate: newInRate,
-                  outRate: newOutRate
-                }
+                  inRate: Math.random() * 10 * 1024 * 1024, // 0-10 MB/s
+                  outRate: Math.random() * 5 * 1024 * 1024, // 0-5 MB/s
+                },
+                uptime: guest.uptime || 300 // 5 minutes default
               }
-            };
+            });
           });
+          
+          return updatedMetrics;
         });
       }, 2000); // Update every 2 seconds
     }
