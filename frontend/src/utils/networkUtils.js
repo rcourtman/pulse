@@ -390,20 +390,19 @@ export const getSortedAndFilteredData = (
       
       // Special case for type column (normalize qemu/lxc to vm/ct)
       if (sortConfig.key === 'type') {
-        // Normalize type values
+        // Normalize type values to boolean (true for VM, false for CT)
         const getTypeValue = (type) => {
           const typeStr = (type || '').toLowerCase();
-          if (typeStr === 'qemu') return 'vm';
-          if (typeStr === 'lxc') return 'ct';
-          return typeStr;
+          return typeStr === 'qemu';
         };
         
-        const aType = getTypeValue(a.type);
-        const bType = getTypeValue(b.type);
+        const aIsVM = getTypeValue(a.type);
+        const bIsVM = getTypeValue(b.type);
         
+        // Simple boolean comparison
         return sortConfig.direction === 'asc'
-          ? aType.localeCompare(bType)
-          : bType.localeCompare(aType);
+          ? (aIsVM === bIsVM ? 0 : aIsVM ? 1 : -1)
+          : (aIsVM === bIsVM ? 0 : aIsVM ? -1 : 1);
       }
       
       // Default string comparison for other fields
