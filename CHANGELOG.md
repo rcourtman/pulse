@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [1.6.4] - 2024-03-14
+
+### Added
+- Added DEMO MODE indicator when running with mock data
+
+### Fixed
+- Fixed Demo Mode banner and environment detection for mock data
+- Fixed type column sorting to properly alternate between CT and VM
+- Fixed sorting for status and type columns with special case handling
+- Improved mock data with more stopped guests and proper uptime values
+- Enhanced mock data with more dynamic changes and patterns
+- Fixed Docker development environment by preventing duplicate .dev extension in Dockerfile path
+
+### Documentation
+- Updated README with clear all-in-one installation command and Node.js version requirements
+- Updated README.md and GETTING-STARTED.md with correct startup procedures and commands
+- Updated version link to point to specific release tag
+
 ## [1.6.3] - 2024-03-13
 
 ### Security
