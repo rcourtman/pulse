@@ -1,6 +1,6 @@
 # Pulse Release Guide
 
-This document outlines the key requirements for creating new releases of Pulse.
+This document outlines the key requirements for creating releases of Pulse that work efficiently with the installation scripts.
 
 ## Release Criteria
 
@@ -21,6 +21,55 @@ Ensure version numbers match in ALL these files:
 - `frontend/package.json`
 - `docker/Dockerfile` (LABEL version)
 
+### Distribution Package Creation
+
+For each release:
+1. Build the application (both backend and frontend)
+2. Create a distribution package (tar.gz) containing:
+   - Compiled server JavaScript files
+   - Built frontend assets
+   - Production dependencies only (no dev dependencies)
+   - Configuration templates (.env.example)
+   - License and documentation files
+   - Version information file
+
+3. The package should exclude:
+   - Source TypeScript files
+   - Source maps
+   - Tests and test fixtures
+   - Build artifacts not needed for production
+   - Development dependencies
+   - Git files
+
+### Docker Multi-Architecture Build
+
+For each release:
+1. Ensure Docker and Docker Buildx are properly configured:
+   ```bash
+   docker buildx ls  # Verify buildx is available
+   ```
+
+2. Login to DockerHub:
+   ```bash
+   docker login
+   ```
+
+3. Build and push multi-architecture images:
+   ```bash
+   VERSION=$(node -e "console.log(require('./package.json').version)")
+   docker buildx build --platform linux/amd64,linux/arm64 \
+     -t rcourtman/pulse:${VERSION} \
+     -t rcourtman/pulse:latest \
+     --push -f docker/Dockerfile .
+   ```
+
+4. Verify the multi-architecture image:
+   ```bash
+   docker buildx imagetools inspect rcourtman/pulse:${VERSION}
+   ```
+
+5. Ensure both amd64 and arm64 architectures are included in the published image.
+
 ### CHANGELOG Generation
 
 - Review ALL commits since the last release tag to create a comprehensive changelog
@@ -28,36 +77,72 @@ Ensure version numbers match in ALL these files:
 - Ensure all significant changes, features, and fixes are documented
 - Organize changes by type (Added, Changed, Fixed, etc.)
 
-### Git Requirements
+### Git and Release Steps
 
-- Create and push a version tag (format: vX.Y.Z)
-- Create GitHub release with meaningful release notes
-- Reference the CHANGELOG
+1. Update version numbers in all relevant files
+2. Build backend and frontend
+3. Create distribution package:
+   ```bash
+   # Create distribution package
+   VERSION=$(node -e "console.log(require('./package.json').version)")
+   tar -czf pulse-${VERSION}.tar.gz -C dist pulse
+   ```
+4. Create GitHub release with:
+   - Version tag (vX.Y.Z)
+   - Release notes
+   - Distribution package attached
+   - CHANGELOG information
 
-### Docker Requirements
+### Pre-Release Testing
 
-- Build multi-architecture images (amd64, arm64)
-- Tag with both specific version and latest
-- Verify image version labels match release version
-- Push to DockerHub
+Ensure:
+- Distribution package installs and runs correctly
+- Services start properly
+- Configuration can be modified
+- Application is accessible on expected port
+- Mock data server works correctly
+- Update process functions
+- Docker image runs correctly on both amd64 and arm64 architectures
 
-### Pre-Release Validation
+## Distribution Package Structure
 
-- Tests pass
-- Documentation updated
-- CHANGELOG.md updated with new features, fixes, and changes
-- Application runs correctly in both development and production modes
+The expected structure:
+```
+pulse/
+├── dist/              # Compiled server JavaScript
+├── frontend/
+│   └── dist/          # Built frontend assets
+├── node_modules/      # Production dependencies only
+├── .env.example       # Configuration template
+├── package.json       # For dependency references
+├── LICENSE
+├── README.md
+└── version.txt        # Plain text version for updates
+```
 
 ## Common Issues
 
-### Version Mismatch
+### Production vs Development
 
-When versions don't match across files, the release appears inconsistent to users.
-Rebuild Docker images if labels are incorrect.
+Ensure all code properly references the production paths. Common issues:
+- Frontend asset paths
+- API endpoint references
+- Static file handling
+
+### Mock Data Server
+
+- Verify mock data server works in production mode
+- Ensure it can be started correctly from systemd
+- Test with mock data enabled and disabled
+
+### Update Process Compatibility 
+
+Ensure new releases remain compatible with the update script in existing installations.
 
 ### Docker Build Problems
 
 For multi-architecture builds, ensure buildx is configured properly and Docker daemon is running.
+For ARM builds on x86 machines, ensure qemu emulation is available with: `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
 
 ### Command Pager Issues
 
@@ -65,4 +150,4 @@ For commands that invoke a pager (git log, docker logs, etc.), append `| cat` to
 ```
 git log | cat
 docker logs container_name | cat
-```
+``` 
