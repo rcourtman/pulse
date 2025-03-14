@@ -24,14 +24,38 @@ Ensure version numbers match in ALL these files:
 ### Distribution Package Creation
 
 For each release:
-1. Build the application (both backend and frontend)
-2. Create a distribution package (tar.gz) containing:
-   - Compiled server JavaScript files
-   - Built frontend assets
-   - Production dependencies only (no dev dependencies)
-   - Configuration templates (.env.example)
-   - License and documentation files
-   - Version information file
+1. Build the application (both backend and frontend):
+   ```bash
+   # Build backend
+   npm run build
+   
+   # Build frontend
+   cd frontend && npm run build && cd ..
+   ```
+
+2. Create a distribution package (tar.gz) with the correct directory structure:
+   ```bash
+   VERSION=$(node -e "console.log(require('./package.json').version)")
+   
+   # Create temporary structure with files in the right locations
+   mkdir -p tmp/pulse/frontend
+   
+   # Copy compiled backend, dependencies, and config files
+   cp -R dist node_modules package.json package-lock.json .env.example LICENSE README.md CHANGELOG.md scripts tmp/pulse/
+   cp scripts/start-prod.sh scripts/start-prod.bat tmp/pulse/
+   
+   # Copy frontend files to frontend/dist (CRITICAL: server expects files here)
+   cp -R frontend/dist tmp/pulse/frontend/
+   
+   # Include version info
+   echo "${VERSION}" > tmp/pulse/version.txt
+   
+   # Create package without macOS metadata files
+   COPYFILE_DISABLE=1 tar --exclude="._*" --exclude=".git" --exclude=".DS_Store" -czf pulse-${VERSION}.tar.gz -C tmp pulse
+   
+   # Clean up
+   rm -rf tmp
+   ```
 
 3. The package should exclude:
    - Source TypeScript files
@@ -40,6 +64,9 @@ For each release:
    - Build artifacts not needed for production
    - Development dependencies
    - Git files
+   - Operating system metadata files (._*)
+
+> **IMPORTANT:** The directory structure is critical. The compiled server code expects frontend files to be in `frontend/dist/`. Placing them elsewhere (like `dist/public/`) will cause a "Frontend not found" error when the application starts.
 
 ### Docker Multi-Architecture Build
 
