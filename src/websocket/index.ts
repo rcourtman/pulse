@@ -202,6 +202,20 @@ export class WebSocketServer {
         const metrics = metricsService.getAllCurrentMetrics();
         socket.emit('message', this.createMessage(WebSocketMessageType.METRICS_UPDATE, metrics));
       });
+      
+      // Handle request for server configuration
+      socket.on('getServerConfig', (callback) => {
+        this.logger.debug(`Client ${socket.id} requested server configuration`);
+        if (typeof callback === 'function') {
+          // Send the server configuration to the client
+          callback({
+            useMockData: process.env.USE_MOCK_DATA === 'true' || process.env.MOCK_DATA_ENABLED === 'true',
+            mockDataEnabled: process.env.USE_MOCK_DATA === 'true' || process.env.MOCK_DATA_ENABLED === 'true',
+            nodeEnv: process.env.NODE_ENV || 'production',
+            isDevelopment: process.env.NODE_ENV === 'development'
+          });
+        }
+      });
     });
 
     // Log any errors

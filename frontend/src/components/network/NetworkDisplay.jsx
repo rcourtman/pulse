@@ -30,7 +30,9 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   const { 
     isConnected, 
     guestData, 
-    metricsData, 
+    metricsData,
+    processedMetricsData, 
+    forceUpdateCounter: socketUpdateCounter,
     error,
     connectionStatus,
     reconnect,
@@ -319,12 +321,34 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
   }, [nodeData, showNotification]);
   
   const combinedMetrics = useMemo(() => {
-    // When using the mock data server, always use the real metrics
+    // When using the mock data server, always use the processed metrics
     const useMockData = localStorage.getItem('use_mock_data') === 'true' || 
                         localStorage.getItem('MOCK_DATA_ENABLED') === 'true';
     
+    // Create a safe default metrics object structure in case data is missing
+    const safeDefaultMetrics = {
+      cpu: {},
+      memory: {},
+      disk: {},
+      network: {}
+    };
+    
+    // Log the update for debugging
+    if (socketUpdateCounter % 20 === 0) {
+      console.log(`NetworkDisplay metrics refresh #${socketUpdateCounter}`, {
+        useMockData,
+        processedMetricsData: {
+          cpu: Object.keys(processedMetricsData?.cpu || {}).length,
+          memory: Object.keys(processedMetricsData?.memory || {}).length,
+          disk: Object.keys(processedMetricsData?.disk || {}).length,
+          network: Object.keys(processedMetricsData?.network || {}).length
+        }
+      });
+    }
+    
     if (useMockData) {
-      return formattedMetrics;
+      // Use processedMetricsData which is updated more frequently
+      return processedMetricsData || safeDefaultMetrics;
     }
     
     // Otherwise, fall back to the previous behavior
@@ -335,12 +359,24 @@ const NetworkDisplay = ({ selectedNode = 'all' }) => {
     
     // If we have real metrics, use them; otherwise, use mock metrics
     return {
-      cpu: hasRealCpuMetrics ? formattedMetrics.cpu : mockMetrics.cpu,
-      memory: hasRealMemoryMetrics ? formattedMetrics.memory : mockMetrics.memory,
-      disk: hasRealDiskMetrics ? formattedMetrics.disk : mockMetrics.disk,
-      network: hasRealNetworkMetrics ? formattedMetrics.network : mockMetrics.network
+      cpu: hasRealCpuMetrics ? formattedMetrics.cpu : (mockMetrics?.cpu || {}),
+      memory: hasRealMemoryMetrics ? formattedMetrics.memory : (mockMetrics?.memory || {}),
+      disk: hasRealDiskMetrics ? formattedMetrics.disk : (mockMetrics?.disk || {}),
+      network: hasRealNetworkMetrics ? formattedMetrics.network : (mockMetrics?.network || {})
     };
-  }, [formattedMetrics, mockMetrics]);
+  }, [formattedMetrics, mockMetrics, processedMetricsData, socketUpdateCounter]);
+  
+  // Log metrics updates with the counter to verify it's changing
+  useEffect(() => {
+    console.log(`Metrics update #${socketUpdateCounter}`, {
+      combinedMetrics: {
+        cpu: Object.keys(combinedMetrics.cpu).length,
+        memory: Object.keys(combinedMetrics.memory).length,
+        disk: Object.keys(combinedMetrics.disk).length,
+        network: Object.keys(combinedMetrics.network).length
+      }
+    });
+  }, [socketUpdateCounter, combinedMetrics]);
   
   const theme = useTheme();
   const { darkMode } = useThemeContext();

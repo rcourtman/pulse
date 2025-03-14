@@ -10,41 +10,50 @@ export const customMockData = {
   nodes: [
     {
       id: 'node-1',
-      name: 'MOCK-pve1',
+      name: 'pve-prod-01',
       status: 'online',
-      cpu: { usage: 0.72, cores: 32 },
+      cpu: { usage: 0.62, cores: 32 },
       memory: { used: 103079215104, total: 137438953472 }, // 96GB used of 128GB
       guests: [
         { 
           id: '101', 
-          name: 'mock-db-master', 
+          name: 'db-primary', 
           type: 'vm', 
           status: 'running', 
-          cpu: 0.65, 
+          cpu: 0.78, 
           memory: 34359738368, // 32GB
           disk: { used: 858993459200, total: 1099511627776 } // 800GB used of 1TB
         },
         { 
-          id: '104', 
-          name: 'mock-web1', 
+          id: '102', 
+          name: 'db-replica-01', 
           type: 'vm', 
           status: 'running', 
-          cpu: 0.28, 
+          cpu: 0.45, 
+          memory: 17179869184, // 16GB
+          disk: { used: 536870912000, total: 1099511627776 } // 500GB used of 1TB
+        },
+        { 
+          id: '104', 
+          name: 'web-prod-01', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.32, 
           memory: 8589934592, // 8GB
           disk: { used: 32212254720, total: 107374182400 } // 30GB used of 100GB
         },
         { 
-          id: '107', 
-          name: 'mock-web2', 
+          id: '105', 
+          name: 'web-prod-02', 
           type: 'vm', 
           status: 'running', 
-          cpu: 0.31, 
+          cpu: 0.27, 
           memory: 8589934592, // 8GB
           disk: { used: 34359738368, total: 107374182400 } // 32GB used of 100GB
         },
         { 
           id: '110', 
-          name: 'mock-redis', 
+          name: 'redis-cache-01', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.22, 
@@ -53,7 +62,7 @@ export const customMockData = {
         },
         { 
           id: '115', 
-          name: 'mock-mail', 
+          name: 'mail-server', 
           type: 'vm', 
           status: 'running', 
           cpu: 0.18, 
@@ -62,46 +71,55 @@ export const customMockData = {
         },
         { 
           id: '203', 
-          name: 'mock-lb1', 
+          name: 'haproxy-01', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.08, 
+          cpu: 0.15, 
           memory: 2147483648, // 2GB
-          disk: { used: 2147483648, total: 10737418240 } // 2GB used of 10GB
+          disk: { used: 3221225472, total: 10737418240 } // 3GB used of 10GB
         },
         { 
           id: '204', 
-          name: 'mock-lb2', 
-          type: 'ct', 
-          status: 'running', 
-          cpu: 0.07, 
-          memory: 2147483648, // 2GB
-          disk: { used: 2147483648, total: 10737418240 } // 2GB used of 10GB
-        },
-        { 
-          id: '210', 
-          name: 'mock-monitoring', 
+          name: 'haproxy-02', 
           type: 'ct', 
           status: 'running', 
           cpu: 0.12, 
+          memory: 2147483648, // 2GB
+          disk: { used: 3221225472, total: 10737418240 } // 3GB used of 10GB
+        },
+        { 
+          id: '210', 
+          name: 'grafana-prometheus', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.24, 
           memory: 4294967296, // 4GB
           disk: { used: 32212254720, total: 53687091200 } // 30GB used of 50GB
         },
         { 
+          id: '211', 
+          name: 'loki-logs', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.19, 
+          memory: 4294967296, // 4GB
+          disk: { used: 42949672960, total: 107374182400 } // 40GB used of 100GB
+        },
+        { 
           id: '999', 
-          name: 'mock-shared-vm', 
+          name: 'clustered-app', 
           type: 'vm', 
           status: 'running', 
-          cpu: 0.25, 
+          cpu: 0.35, 
           memory: 4294967296, // 4GB
           disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
         },
         { 
           id: '888', 
-          name: 'mock-shared-container', 
+          name: 'clustered-service', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.15, 
+          cpu: 0.22, 
           memory: 2147483648, // 2GB
           disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }
@@ -109,89 +127,116 @@ export const customMockData = {
     },
     {
       id: 'node-2',
-      name: 'MOCK-pve2',
+      name: 'pve-prod-02',
       status: 'online',
-      cpu: { usage: 0.35, cores: 16 },
-      memory: { used: 28991029248, total: 68719476736 }, // 27GB used of 64GB
+      cpu: { usage: 0.58, cores: 32 },
+      memory: { used: 90194313216, total: 137438953472 }, // 84GB used of 128GB
       guests: [
         { 
-          id: '121', 
-          name: 'mock-dev-db', 
+          id: '103', 
+          name: 'db-replica-02', 
           type: 'vm', 
+          status: 'running', 
+          cpu: 0.42, 
+          memory: 17179869184, // 16GB
+          disk: { used: 504403158016, total: 1099511627776 } // 470GB used of 1TB
+        },
+        { 
+          id: '106', 
+          name: 'web-prod-03', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.36, 
+          memory: 8589934592, // 8GB
+          disk: { used: 32212254720, total: 107374182400 } // 30GB used of 100GB
+        },
+        { 
+          id: '107', 
+          name: 'web-prod-04', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.29, 
+          memory: 8589934592, // 8GB
+          disk: { used: 33285996544, total: 107374182400 } // 31GB used of 100GB
+        },
+        { 
+          id: '111', 
+          name: 'redis-cache-02', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.19, 
+          memory: 16777216000, // 16GB
+          disk: { used: 20401094656, total: 53687091200 } // 19GB used of 50GB
+        },
+        { 
+          id: '120', 
+          name: 'elasticsearch-01', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.46, 
+          memory: 17179869184, // 16GB
+          disk: { used: 236223201280, total: 322122547200 } // 220GB used of 300GB
+        },
+        { 
+          id: '121', 
+          name: 'logstash-01', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.32, 
+          memory: 8589934592, // 8GB
+          disk: { used: 42949672960, total: 107374182400 } // 40GB used of 100GB
+        },
+        { 
+          id: '205', 
+          name: 'nginx-01', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.13, 
+          memory: 2147483648, // 2GB
+          disk: { used: 3221225472, total: 10737418240 } // 3GB used of 10GB
+        },
+        { 
+          id: '206', 
+          name: 'nginx-02', 
+          type: 'ct', 
           status: 'running', 
           cpu: 0.12, 
-          memory: 8589934592, // 8GB
-          disk: { used: 53687091200, total: 214748364800 } // 50GB used of 200GB
+          memory: 2147483648, // 2GB
+          disk: { used: 3221225472, total: 10737418240 } // 3GB used of 10GB
         },
         { 
-          id: '125', 
-          name: 'mock-dev-web1', 
-          type: 'vm', 
-          status: 'running', 
-          cpu: 0.08, 
-          memory: 4294967296, // 4GB
-          disk: { used: 10737418240, total: 53687091200 } // 10GB used of 50GB
-        },
-        { 
-          id: '126', 
-          name: 'mock-dev-web2', 
-          type: 'vm', 
-          status: 'stopped', 
-          cpu: 0, 
-          memory: 4294967296, // 4GB
-          disk: { used: 10737418240, total: 53687091200 } // 10GB used of 50GB
-        },
-        { 
-          id: '130', 
-          name: 'mock-test-api', 
-          type: 'vm', 
-          status: 'running', 
-          cpu: 0.05, 
-          memory: 4294967296, // 4GB
-          disk: { used: 8589934592, total: 32212254720 } // 8GB used of 30GB
-        },
-        { 
-          id: '142', 
-          name: 'mock-jenkins', 
-          type: 'vm', 
-          status: 'running', 
-          cpu: 0.25, 
-          memory: 8589934592, // 8GB
-          disk: { used: 85899345920, total: 107374182400 } // 80GB used of 100GB
-        },
-        { 
-          id: '220', 
-          name: 'mock-dev-tools', 
+          id: '207', 
+          name: 'jenkins-ci', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.03, 
-          memory: 1073741824, // 1GB
-          disk: { used: 4294967296, total: 10737418240 } // 4GB used of 10GB
+          cpu: 0.38, 
+          memory: 4294967296, // 4GB
+          disk: { used: 64424509440, total: 107374182400 } // 60GB used of 100GB
         },
         { 
-          id: '225', 
-          name: 'mock-staging-proxy', 
+          id: '212', 
+          name: 'kibana-dashboard', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.02, 
-          memory: 1073741824, // 1GB
-          disk: { used: 2147483648, total: 10737418240 } // 2GB used of 10GB
+          cpu: 0.17, 
+          memory: 2147483648, // 2GB
+          disk: { used: 8589934592, total: 10737418240 } // 8GB used of 10GB
         },
         { 
           id: '999', 
-          name: 'mock-shared-vm', 
+          name: 'clustered-app', 
           type: 'vm', 
-          status: 'running', 
-          cpu: 0.25, 
+          status: 'stopped', 
+          cpu: 0, 
           memory: 4294967296, // 4GB
           disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
         },
         { 
           id: '888', 
-          name: 'mock-shared-container', 
+          name: 'clustered-service', 
           type: 'ct', 
-          status: 'running', 
-          cpu: 0.15, 
+          status: 'stopped', 
+          cpu: 0, 
           memory: 2147483648, // 2GB
           disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }
@@ -199,23 +244,23 @@ export const customMockData = {
     },
     {
       id: 'node-3',
-      name: 'MOCK-pve3',
+      name: 'pve-dev-01',
       status: 'online',
-      cpu: { usage: 0.22, cores: 8 },
-      memory: { used: 12884901888, total: 34359738368 }, // 12GB used of 32GB
+      cpu: { usage: 0.38, cores: 16 },
+      memory: { used: 24696061952, total: 34359738368 }, // 23GB used of 32GB
       guests: [
         { 
           id: '150', 
-          name: 'mock-win10-test', 
+          name: 'win10-testing', 
           type: 'vm', 
           status: 'running', 
-          cpu: 0.15, 
+          cpu: 0.25, 
           memory: 8589934592, // 8GB
           disk: { used: 64424509440, total: 107374182400 } // 60GB used of 100GB
         },
         { 
           id: '151', 
-          name: 'mock-ubuntu22-template', 
+          name: 'ubuntu-22.04-template', 
           type: 'vm', 
           status: 'stopped', 
           cpu: 0, 
@@ -223,8 +268,8 @@ export const customMockData = {
           disk: { used: 5368709120, total: 21474836480 } // 5GB used of 20GB
         },
         { 
-          id: '155', 
-          name: 'mock-debian11-template', 
+          id: '152', 
+          name: 'debian-12-template', 
           type: 'vm', 
           status: 'stopped', 
           cpu: 0, 
@@ -232,8 +277,44 @@ export const customMockData = {
           disk: { used: 4294967296, total: 21474836480 } // 4GB used of 20GB
         },
         { 
+          id: '153', 
+          name: 'fedora-38-template', 
+          type: 'vm', 
+          status: 'stopped', 
+          cpu: 0, 
+          memory: 2147483648, // 2GB
+          disk: { used: 4831838208, total: 21474836480 } // 4.5GB used of 20GB
+        },
+        { 
+          id: '160', 
+          name: 'dev-db', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.12, 
+          memory: 4294967296, // 4GB
+          disk: { used: 53687091200, total: 107374182400 } // 50GB used of 100GB
+        },
+        { 
+          id: '161', 
+          name: 'dev-web', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.08, 
+          memory: 4294967296, // 4GB
+          disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
+        },
+        { 
+          id: '162', 
+          name: 'dev-api', 
+          type: 'vm', 
+          status: 'running', 
+          cpu: 0.09, 
+          memory: 4294967296, // 4GB
+          disk: { used: 16777216000, total: 53687091200 } // 16GB used of 50GB
+        },
+        { 
           id: '180', 
-          name: 'mock-game-server', 
+          name: 'minecraft-server', 
           type: 'vm', 
           status: 'paused', 
           cpu: 0, 
@@ -242,46 +323,64 @@ export const customMockData = {
         },
         { 
           id: '240', 
-          name: 'mock-pihole-dns', 
+          name: 'pihole-dns', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.01, 
+          cpu: 0.03, 
           memory: 536870912, // 512MB
-          disk: { used: 1073741824, total: 5368709120 } // 1GB used of 5GB
+          disk: { used: 1610612736, total: 5368709120 } // 1.5GB used of 5GB
         },
         { 
-          id: '245', 
-          name: 'mock-home-automation', 
+          id: '241', 
+          name: 'unifi-controller', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.04, 
+          cpu: 0.07, 
           memory: 1073741824, // 1GB
-          disk: { used: 3221225472, total: 10737418240 } // 3GB used of 10GB
+          disk: { used: 3758096384, total: 10737418240 } // 3.5GB used of 10GB
         },
         { 
-          id: '250', 
-          name: 'mock-media-server', 
+          id: '242', 
+          name: 'home-assistant', 
           type: 'ct', 
           status: 'running', 
-          cpu: 0.08, 
+          cpu: 0.09, 
           memory: 2147483648, // 2GB
-          disk: { used: 536870912000, total: 1099511627776 } // 500GB used of 1TB
+          disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
+        },
+        { 
+          id: '243', 
+          name: 'plex-media', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.16, 
+          memory: 4294967296, // 4GB
+          disk: { used: 751619276800, total: 1099511627776 } // 700GB used of 1TB
+        },
+        { 
+          id: '244', 
+          name: 'transmission-dl', 
+          type: 'ct', 
+          status: 'running', 
+          cpu: 0.06, 
+          memory: 2147483648, // 2GB
+          disk: { used: 644245094400, total: 1099511627776 } // 600GB used of 1TB
         },
         { 
           id: '999', 
-          name: 'mock-shared-vm', 
+          name: 'clustered-app', 
           type: 'vm', 
-          status: 'running', 
-          cpu: 0.25, 
+          status: 'stopped', 
+          cpu: 0, 
           memory: 4294967296, // 4GB
           disk: { used: 21474836480, total: 53687091200 } // 20GB used of 50GB
         },
         { 
           id: '888', 
-          name: 'mock-shared-container', 
+          name: 'clustered-service', 
           type: 'ct', 
-          status: 'running', 
-          cpu: 0.15, 
+          status: 'stopped', 
+          cpu: 0, 
           memory: 2147483648, // 2GB
           disk: { used: 5368709120, total: 10737418240 } // 5GB used of 10GB
         }

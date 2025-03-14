@@ -31,6 +31,9 @@ function AppContent() {
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
+  // Check if we're in development mode - moved up to fix initialization order
+  const isDevelopment = import.meta.env.DEV;
+  
   // Error boundary effect
   useEffect(() => {
     const handleError = (event) => {
@@ -46,24 +49,37 @@ function AppContent() {
     };
   }, []);
   
-  // Make sure localStorage has the mock data flags set correctly
+  // Initialize storage based on environment
   useEffect(() => {
-    // Set localStorage items to indicate mock data mode is enabled
-    localStorage.setItem('use_mock_data', 'true');
-    localStorage.setItem('MOCK_DATA_ENABLED', 'true');
-    console.log('Mock data mode enabled via localStorage');
-  }, []);
+    // Only initialize mock data flags if in development mode and not explicitly disabled
+    if (isDevelopment && import.meta.env.DISABLE_MOCK_DATA !== 'true') {
+      console.log('Development mode detected, mock data can be enabled if needed');
+    } else {
+      // In production or when explicitly disabled, ensure mock data is disabled
+      if (localStorage.getItem('use_mock_data') === 'true' || localStorage.getItem('MOCK_DATA_ENABLED') === 'true') {
+        console.log('Resetting mock data flags to match production environment');
+        localStorage.removeItem('use_mock_data');
+        localStorage.removeItem('MOCK_DATA_ENABLED');
+      }
+    }
+  }, [isDevelopment]);
   
   const { 
     nodeData, 
     guestData, 
     isConnected,
-    isMockData
+    isMockData,
+    processedMetricsData,
+    forceUpdateCounter
   } = useSocket();
   const theme = useTheme();
   
-  // Check if we're in development mode
-  const isDevelopment = import.meta.env.DEV;
+  // Force a re-render when the forceUpdateCounter changes
+  useEffect(() => {
+    if (forceUpdateCounter % 10 === 0 && forceUpdateCounter > 0) {
+      console.log('Force update triggered by counter:', forceUpdateCounter);
+    }
+  }, [forceUpdateCounter]);
   
   // Check if mock data is enabled - using both localStorage values and socket status
   const isMockDataEnabled = isMockData || 
@@ -99,10 +115,6 @@ function AppContent() {
       window.removeEventListener('nodeChange', handleNodeChangeEvent);
     };
   }, []);
-  
-  // We'll force DEMO MODE to be visible in development mode
-  // This ensures the indicator is always shown during development
-  const forceShowDemoMode = true;
   
   // If there's an error, show an error message
   if (hasError) {
@@ -149,8 +161,8 @@ function AppContent() {
         document.activeElement?.blur();
       }
     }}>
-      {/* DEMO MODE Banner - Always visible in development mode */}
-      {(isMockDataEnabled || forceShowDemoMode) && (
+      {/* DEMO MODE Banner - Only visible when mock data is enabled */}
+      {(isMockDataEnabled) && (
         <Alert 
           severity="warning" 
           variant="standard"
@@ -209,26 +221,6 @@ function AppContent() {
                 />
               </Link>
             </Tooltip>
-            
-            {/* DEMO MODE indicator - Always visible in development mode */}
-            {(isMockDataEnabled || forceShowDemoMode) && (
-              <Tooltip title="Pulse is running with simulated data. To connect to a real Proxmox server, set USE_MOCK_DATA=false and MOCK_DATA_ENABLED=false in your .env file">
-                <Chip
-                  label="DEMO MODE"
-                  color="warning"
-                  size="small"
-                  sx={{ 
-                    ml: 2,
-                    fontWeight: 'medium',
-                    fontSize: '0.85rem',
-                    border: '1px solid',
-                    borderColor: 'warning.light',
-                    color: 'white',
-                    animation: 'none'
-                  }}
-                />
-              </Tooltip>
-            )}
           </Box>
           
           {/* Dark Mode Toggle Button */}
